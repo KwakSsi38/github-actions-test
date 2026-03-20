@@ -1,9 +1,10 @@
 package back.global.util;
 
-import back.global.exception.ServiceException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+
+import back.global.exception.ServiceException;
 
 public class PageUtils {
 

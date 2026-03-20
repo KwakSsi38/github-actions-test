@@ -1,8 +1,14 @@
+import org.gradle.internal.impldep.org.apache.sshd.common.NamedResource.findByName
+
 plugins {
     java
     id("org.springframework.boot") version "4.0.3"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.asciidoctor.jvm.convert") version "4.0.5"
+//    코드스타일 체크
+    checkstyle
+    jacoco
+    id("com.diffplug.spotless") version "6.25.0"
 }
 
 group = "back"
@@ -64,4 +70,56 @@ tasks.test {
 tasks.asciidoctor {
     inputs.dir(project.extra["snippetsDir"]!!)
     dependsOn(tasks.test)
+}
+// --- 품질 도구 상세 설정 추가 ---
+// 1. Checkstyle 설정
+checkstyle {
+    toolVersion = "10.12.5"
+    isIgnoreFailures = true // 일단 빌드 성공을 위해 true로 둡니다.
+    maxWarnings = 0
+}
+
+// 2. JaCoCo 설정
+jacoco {
+    toolVersion = "0.8.11"
+}
+
+tasks.named<JacocoReport>("jacocoTestReport") {
+    dependsOn(tasks.test)
+    reports {
+        // 인텔리제이가 자꾸 Document를 가져오지 못하게 문법을 더 단순화했습니다.
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    violationRules {
+        rule {
+            element = "CLASS"
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.80".toBigDecimal()
+            }
+        }
+    }
+}
+
+// 3. Spotless 설정
+spotless {
+    java {
+        target("src/**/*.java")
+        palantirJavaFormat()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        formatAnnotations()
+        endWithNewline()
+        importOrder("java", "javax", "org", "com", "")
+    }
+    format("misc") {
+        target("*.gradle", "*.md", ".gitignore")
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }

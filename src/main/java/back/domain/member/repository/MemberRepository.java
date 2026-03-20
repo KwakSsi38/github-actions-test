@@ -1,9 +1,10 @@
 package back.domain.member.repository;
 
-import back.domain.member.entity.Member;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.Optional;
+import back.domain.member.entity.Member;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findByGoogleSub(String googleSub);
