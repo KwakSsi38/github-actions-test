@@ -38,7 +38,7 @@ jobs:
         with:
           files: '**/build/test-results/test/**/*.xml'
           check_name: '테스트 결과 보고서 📊'
-          comment_mode: 'update'
+          comment_mode: 'always'
 
 # 사후 부석용
       - name: Upload Test Report
