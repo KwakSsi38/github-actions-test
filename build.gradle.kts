@@ -97,6 +97,11 @@ tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
     violationRules {
         rule {
             element = "CLASS"
+            excludes = listOf(
+                "**.*DTO*",        // 이름에 DTO가 포함된 모든 클래스 제외
+                "**.config.**",     // config 패키지 안에 있는 모든 클래스 제외
+                "**.*Application*"  // 메인 실행 클래스 제외
+            )
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
