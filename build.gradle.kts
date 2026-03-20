@@ -5,6 +5,7 @@ plugins {
     id("org.springframework.boot") version "4.0.3"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.asciidoctor.jvm.convert") version "4.0.5"
+    id("com.github.spotbugs") version "6.0.20"
 //    코드스타일 체크
     checkstyle
     jacoco
