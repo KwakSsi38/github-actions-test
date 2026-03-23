@@ -50,7 +50,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } catch (ServiceException exception) {
             SecurityContextHolder.clearContext();
-            request.setAttribute(RestAuthenticationEntryPoint.ERROR_CODE_ATTRIBUTE, "401-1");
+            request.setAttribute(
+                    RestAuthenticationEntryPoint.ERROR_CODE_ATTRIBUTE,
+                    exception.getRsData().resultCode());
             request.setAttribute(
                     RestAuthenticationEntryPoint.ERROR_MESSAGE_ATTRIBUTE, normalizeErrorMessage(exception));
             authenticationEntryPoint.commence(
