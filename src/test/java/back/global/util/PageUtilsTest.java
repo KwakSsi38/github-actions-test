@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import back.global.exception.CommonErrorCode;
 import back.global.exception.ServiceException;
 
 class PageUtilsTest {
@@ -38,7 +39,8 @@ class PageUtilsTest {
                 .isInstanceOf(ServiceException.class)
                 .satisfies(exception -> {
                     ServiceException serviceException = (ServiceException) exception;
-                    assertThat(serviceException.getRsData().resultCode()).isEqualTo("400-1");
+                    assertThat(serviceException.getErrorCode()).isEqualTo(CommonErrorCode.BAD_REQUEST);
+                    assertThat(serviceException.getClientMessage()).isEqualTo("페이지 번호는 0 이상이어야 합니다.");
                 });
     }
 
@@ -49,7 +51,8 @@ class PageUtilsTest {
                 .isInstanceOf(ServiceException.class)
                 .satisfies(exception -> {
                     ServiceException serviceException = (ServiceException) exception;
-                    assertThat(serviceException.getRsData().resultCode()).isEqualTo("400-1");
+                    assertThat(serviceException.getErrorCode()).isEqualTo(CommonErrorCode.BAD_REQUEST);
+                    assertThat(serviceException.getClientMessage()).isEqualTo("페이지 크기는 1 이상이어야 합니다.");
                 });
     }
 
@@ -60,7 +63,9 @@ class PageUtilsTest {
                 .isInstanceOf(ServiceException.class)
                 .satisfies(exception -> {
                     ServiceException serviceException = (ServiceException) exception;
-                    assertThat(serviceException.getRsData().resultCode()).isEqualTo("400-1");
+                    assertThat(serviceException.getErrorCode()).isEqualTo(CommonErrorCode.BAD_REQUEST);
+                    assertThat(serviceException.getClientMessage())
+                            .isEqualTo(String.format("페이지 크기는 %d 이하여야 합니다.", PageUtils.MAX_SIZE));
                 });
     }
 }

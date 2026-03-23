@@ -53,13 +53,22 @@ public class PageUtils {
      */
     public static void validatePageParameters(int page, int size) {
         if (page < 0) {
-            throw new ServiceException(CommonErrorCode.BAD_REQUEST, "페이지 번호는 0 이상이어야 합니다.");
+            throw new ServiceException(
+                    CommonErrorCode.BAD_REQUEST,
+                    "[PageUtils#validatePageParameters] page is negative: " + page,
+                    "페이지 번호는 0 이상이어야 합니다.");
         }
         if (size <= 0) {
-            throw new ServiceException(CommonErrorCode.BAD_REQUEST, "페이지 크기는 1 이상이어야 합니다.");
+            throw new ServiceException(
+                    CommonErrorCode.BAD_REQUEST,
+                    "[PageUtils#validatePageParameters] size is not positive: " + size,
+                    "페이지 크기는 1 이상이어야 합니다.");
         }
         if (size > MAX_SIZE) {
-            throw new ServiceException(CommonErrorCode.BAD_REQUEST, String.format("페이지 크기는 %d 이하여야 합니다.", MAX_SIZE));
+            throw new ServiceException(
+                    CommonErrorCode.BAD_REQUEST,
+                    "[PageUtils#validatePageParameters] size exceeds max: " + size,
+                    String.format("페이지 크기는 %d 이하여야 합니다.", MAX_SIZE));
         }
     }
 }
