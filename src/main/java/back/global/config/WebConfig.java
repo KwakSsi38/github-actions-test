@@ -22,7 +22,6 @@ public class WebConfig implements WebMvcConfigurer {
         }
 
         // 업로드된 파일을 정적 리소스로 제공
-        registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + uploadDir + "/");
+        registry.addResourceHandler("/uploads/**").addResourceLocations("file:" + uploadDir + "/");
     }
 }

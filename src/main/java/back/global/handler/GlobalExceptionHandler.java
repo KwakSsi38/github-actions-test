@@ -1,9 +1,12 @@
 package back.global.handler;
 
-import back.global.exception.ServiceException;
-import back.global.response.RsData;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.ConstraintViolationException;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+
+import java.util.Comparator;
+import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -12,36 +15,26 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.Comparator;
-import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
-
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
+import back.global.exception.ServiceException;
+import back.global.response.RsData;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<RsData<Void>> handle(NoSuchElementException ex) {
-        return new ResponseEntity<>(
-                new RsData<>(
-                        "404-1",
-                        "해당 데이터가 존재하지 않습니다."
-                ),
-                NOT_FOUND
-        );
+        return new ResponseEntity<>(new RsData<>("404-1", "해당 데이터가 존재하지 않습니다."), NOT_FOUND);
     }
-
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<RsData<Void>> handle(ConstraintViolationException ex) {
-        String message = ex.getConstraintViolations()
-                .stream()
+        String message = ex.getConstraintViolations().stream()
                 .map(violation -> {
                     String[] pathBits = violation.getPropertyPath().toString().split("\\.", 2);
                     String field = pathBits.length > 1 ? pathBits[1] : pathBits[0];
-                    String[] messageTemplateBits = violation.getMessageTemplate()
-                            .split("\\.");
+                    String[] messageTemplateBits =
+                            violation.getMessageTemplate().split("\\.");
                     String code = messageTemplateBits.length >= 2
                             ? messageTemplateBits[messageTemplateBits.length - 2]
                             : "Validation";
@@ -52,20 +45,12 @@ public class GlobalExceptionHandler {
                 .sorted(Comparator.comparing(String::toString))
                 .collect(Collectors.joining("\n"));
 
-        return new ResponseEntity<>(
-                new RsData<>(
-                        "400-1",
-                        message
-                ),
-                BAD_REQUEST
-        );
+        return new ResponseEntity<>(new RsData<>("400-1", message), BAD_REQUEST);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<RsData<Void>> handle(MethodArgumentNotValidException ex) {
-        String message = ex.getBindingResult()
-                .getAllErrors()
-                .stream()
+        String message = ex.getBindingResult().getAllErrors().stream()
                 .filter(error -> error instanceof FieldError)
                 .map(error -> (FieldError) error)
                 .map(error -> error.getDefaultMessage())
@@ -73,39 +58,19 @@ public class GlobalExceptionHandler {
                 .sorted(Comparator.comparing(String::toString))
                 .collect(Collectors.joining(" "));
 
-        return new ResponseEntity<>(
-                new RsData<>(
-                        "400-1",
-                        message
-                ),
-                BAD_REQUEST
-        );
+        return new ResponseEntity<>(new RsData<>("400-1", message), BAD_REQUEST);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<RsData<Void>> handle(HttpMessageNotReadableException ex) {
-        return new ResponseEntity<>(
-                new RsData<>(
-                        "400-1",
-                        "요청 본문이 올바르지 않습니다."
-                ),
-                BAD_REQUEST
-        );
+        return new ResponseEntity<>(new RsData<>("400-1", "요청 본문이 올바르지 않습니다."), BAD_REQUEST);
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)
     public ResponseEntity<RsData<Void>> handle(MissingRequestHeaderException ex) {
         return new ResponseEntity<>(
-                new RsData<>(
-                        "400-1",
-                        "%s-%s-%s".formatted(
-                                ex.getHeaderName(),
-                                "NotBlank",
-                                ex.getLocalizedMessage()
-                        )
-                ),
-                BAD_REQUEST
-        );
+                new RsData<>("400-1", "%s-%s-%s".formatted(ex.getHeaderName(), "NotBlank", ex.getLocalizedMessage())),
+                BAD_REQUEST);
     }
 
     @ExceptionHandler(ServiceException.class)
@@ -119,23 +84,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<RsData<Void>> handle(IllegalArgumentException ex) {
-        return new ResponseEntity<>(
-                new RsData<>(
-                        "400-1",
-                        ex.getMessage()
-                ),
-                BAD_REQUEST
-        );
+        return new ResponseEntity<>(new RsData<>("400-1", ex.getMessage()), BAD_REQUEST);
     }
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<RsData<Void>> handle(IllegalStateException ex) {
-        return new ResponseEntity<>(
-                new RsData<>(
-                        "400-2",
-                        ex.getMessage()
-                ),
-                BAD_REQUEST
-        );
+        return new ResponseEntity<>(new RsData<>("400-2", ex.getMessage()), BAD_REQUEST);
     }
 }

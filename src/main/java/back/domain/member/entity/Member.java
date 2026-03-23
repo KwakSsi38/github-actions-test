@@ -15,10 +15,9 @@ import lombok.NoArgsConstructor;
 @Table(
         name = "users",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_users_google_sub", columnNames = "google_sub"),
-                @UniqueConstraint(name = "uk_users_email", columnNames = "email")
-        }
-)
+            @UniqueConstraint(name = "uk_users_google_sub", columnNames = "google_sub"),
+            @UniqueConstraint(name = "uk_users_email", columnNames = "email")
+        })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Member extends BaseEntity {

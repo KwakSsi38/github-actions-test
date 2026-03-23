@@ -1,4 +1,3 @@
 package back.global.security;
 
-public record AuthenticatedMember(long memberId, String role) {
-}
+public record AuthenticatedMember(long memberId, String role) {}
