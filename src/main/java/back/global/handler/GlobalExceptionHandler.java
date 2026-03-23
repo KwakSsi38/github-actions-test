@@ -1,8 +1,5 @@
 package back.global.handler;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-
 import java.util.Comparator;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
@@ -15,16 +12,16 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import back.global.exception.CommonErrorCode;
 import back.global.exception.ServiceException;
 import back.global.response.RsData;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<RsData<Void>> handle(NoSuchElementException ex) {
-        return new ResponseEntity<>(new RsData<>("404-1", "해당 데이터가 존재하지 않습니다."), NOT_FOUND);
+        return toResponse(CommonErrorCode.NOT_FOUND);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -38,14 +35,14 @@ public class GlobalExceptionHandler {
                     String code = messageTemplateBits.length >= 2
                             ? messageTemplateBits[messageTemplateBits.length - 2]
                             : "Validation";
-                    String _message = violation.getMessage();
+                    String violationMessage = violation.getMessage();
 
-                    return "%s-%s-%s".formatted(field, code, _message);
+                    return "%s-%s-%s".formatted(field, code, violationMessage);
                 })
                 .sorted(Comparator.comparing(String::toString))
                 .collect(Collectors.joining("\n"));
 
-        return new ResponseEntity<>(new RsData<>("400-1", message), BAD_REQUEST);
+        return toResponse(CommonErrorCode.BAD_REQUEST, message);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -58,37 +55,48 @@ public class GlobalExceptionHandler {
                 .sorted(Comparator.comparing(String::toString))
                 .collect(Collectors.joining(" "));
 
-        return new ResponseEntity<>(new RsData<>("400-1", message), BAD_REQUEST);
+        return toResponse(CommonErrorCode.BAD_REQUEST, message);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<RsData<Void>> handle(HttpMessageNotReadableException ex) {
-        return new ResponseEntity<>(new RsData<>("400-1", "요청 본문이 올바르지 않습니다."), BAD_REQUEST);
+        return toResponse(CommonErrorCode.BAD_REQUEST, "요청 본문이 올바르지 않습니다.");
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)
     public ResponseEntity<RsData<Void>> handle(MissingRequestHeaderException ex) {
-        return new ResponseEntity<>(
-                new RsData<>("400-1", "%s-%s-%s".formatted(ex.getHeaderName(), "NotBlank", ex.getLocalizedMessage())),
-                BAD_REQUEST);
+        return toResponse(
+                CommonErrorCode.BAD_REQUEST,
+                "%s-%s-%s".formatted(ex.getHeaderName(), "NotBlank", ex.getLocalizedMessage()));
     }
 
     @ExceptionHandler(ServiceException.class)
-    public RsData<Void> handle(ServiceException ex, HttpServletResponse response) {
+    public ResponseEntity<RsData<Void>> handle(ServiceException ex) {
         RsData<Void> rsData = ex.getRsData();
-
-        response.setStatus(rsData.statusCode());
-
-        return rsData;
+        return ResponseEntity.status(rsData.statusCode()).body(rsData);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<RsData<Void>> handle(IllegalArgumentException ex) {
-        return new ResponseEntity<>(new RsData<>("400-1", ex.getMessage()), BAD_REQUEST);
+        return toResponse(CommonErrorCode.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<RsData<Void>> handle(IllegalStateException ex) {
-        return new ResponseEntity<>(new RsData<>("400-2", ex.getMessage()), BAD_REQUEST);
+        return toResponse(CommonErrorCode.BAD_REQUEST_STATE, ex.getMessage());
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<RsData<Void>> handle(Exception ex) {
+        return toResponse(CommonErrorCode.INTERNAL_SERVER_ERROR);
+    }
+
+    private ResponseEntity<RsData<Void>> toResponse(CommonErrorCode errorCode) {
+        return toResponse(errorCode, errorCode.defaultMessage());
+    }
+
+    private ResponseEntity<RsData<Void>> toResponse(CommonErrorCode errorCode, String message) {
+        return ResponseEntity.status(errorCode.status())
+                .body(new RsData<>(errorCode.resultCode(), errorCode.statusCode(), message, null));
     }
 }
