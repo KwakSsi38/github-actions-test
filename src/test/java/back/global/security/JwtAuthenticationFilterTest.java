@@ -91,14 +91,15 @@ class JwtAuthenticationFilterTest {
         FilterChain filterChain = mock(FilterChain.class);
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer invalid-token");
         when(bearerTokenResolver.resolve("Bearer invalid-token"))
-                .thenThrow(new ServiceException(CommonErrorCode.UNAUTHORIZED, "유효하지 않은 토큰입니다."));
+                .thenThrow(new ServiceException(
+                        CommonErrorCode.UNAUTHORIZED,
+                        "[JwtAuthenticationFilterTest#doFilterInternal_whenServiceException] invalid token",
+                        "유효하지 않은 토큰입니다."));
 
         jwtAuthenticationFilter.doFilter(request, response, filterChain);
 
         verify(authenticationEntryPoint)
                 .commence(eq(request), eq(response), any(InsufficientAuthenticationException.class));
-        assertThat(request.getAttribute(RestAuthenticationEntryPoint.ERROR_CODE_ATTRIBUTE))
-                .isEqualTo("401-1");
         assertThat(request.getAttribute(RestAuthenticationEntryPoint.ERROR_MESSAGE_ATTRIBUTE))
                 .isEqualTo("유효하지 않은 토큰입니다.");
     }
@@ -113,14 +114,15 @@ class JwtAuthenticationFilterTest {
         FilterChain filterChain = mock(FilterChain.class);
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer expired-token");
         when(bearerTokenResolver.resolve("Bearer expired-token"))
-                .thenThrow(new TokenAuthenticationException(TokenErrorType.EXPIRED, "만료된 토큰입니다."));
+                .thenThrow(new TokenAuthenticationException(
+                        TokenErrorType.EXPIRED,
+                        "[JwtAuthenticationFilterTest#doFilterInternal_whenExpiredTokenException] token expired",
+                        "만료된 토큰입니다."));
 
         jwtAuthenticationFilter.doFilter(request, response, filterChain);
 
         verify(authenticationEntryPoint)
                 .commence(eq(request), eq(response), any(InsufficientAuthenticationException.class));
-        assertThat(request.getAttribute(RestAuthenticationEntryPoint.ERROR_CODE_ATTRIBUTE))
-                .isEqualTo("401-1");
         assertThat(request.getAttribute(RestAuthenticationEntryPoint.ERROR_MESSAGE_ATTRIBUTE))
                 .isEqualTo("만료된 토큰입니다.");
     }

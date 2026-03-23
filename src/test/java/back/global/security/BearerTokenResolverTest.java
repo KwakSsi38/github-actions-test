@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import back.global.exception.CommonErrorCode;
 import back.global.exception.ServiceException;
 
 class BearerTokenResolverTest {
@@ -27,7 +28,8 @@ class BearerTokenResolverTest {
                 .isInstanceOf(ServiceException.class)
                 .satisfies(exception -> {
                     ServiceException serviceException = (ServiceException) exception;
-                    assertThat(serviceException.getRsData().resultCode()).isEqualTo("401-1");
+                    assertThat(serviceException.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHORIZED);
+                    assertThat(serviceException.getClientMessage()).isEqualTo("Authorization 헤더는 필수입니다.");
                 });
     }
 
@@ -38,7 +40,8 @@ class BearerTokenResolverTest {
                 .isInstanceOf(ServiceException.class)
                 .satisfies(exception -> {
                     ServiceException serviceException = (ServiceException) exception;
-                    assertThat(serviceException.getRsData().resultCode()).isEqualTo("401-1");
+                    assertThat(serviceException.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHORIZED);
+                    assertThat(serviceException.getClientMessage()).isEqualTo("Authorization 헤더 형식이 올바르지 않습니다.");
                 });
     }
 
@@ -49,7 +52,8 @@ class BearerTokenResolverTest {
                 .isInstanceOf(ServiceException.class)
                 .satisfies(exception -> {
                     ServiceException serviceException = (ServiceException) exception;
-                    assertThat(serviceException.getRsData().resultCode()).isEqualTo("401-1");
+                    assertThat(serviceException.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHORIZED);
+                    assertThat(serviceException.getClientMessage()).isEqualTo("Access Token이 비어 있습니다.");
                 });
     }
 }

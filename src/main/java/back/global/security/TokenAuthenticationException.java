@@ -6,8 +6,8 @@ import back.global.exception.ServiceException;
 public class TokenAuthenticationException extends ServiceException {
     private final TokenErrorType tokenErrorType;
 
-    public TokenAuthenticationException(TokenErrorType tokenErrorType, String message) {
-        super(CommonErrorCode.UNAUTHORIZED, message);
+    public TokenAuthenticationException(TokenErrorType tokenErrorType, String logMessage, String clientMessage) {
+        super(CommonErrorCode.UNAUTHORIZED, logMessage, clientMessage);
         this.tokenErrorType = tokenErrorType;
     }
 
