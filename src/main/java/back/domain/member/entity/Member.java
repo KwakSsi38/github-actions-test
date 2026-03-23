@@ -71,10 +71,4 @@ public class Member extends BaseEntity {
         return value.trim();
     }
 
-    private static <T> T requireNotNull(T value, String fieldName) {
-        if (value == null) {
-            throw new IllegalArgumentException(fieldName + " must not be null");
-        }
-        return value;
-    }
 }
