@@ -1,12 +1,13 @@
 package back.global.security;
 
+import back.global.exception.CommonErrorCode;
 import back.global.exception.ServiceException;
 
 public class TokenAuthenticationException extends ServiceException {
     private final TokenErrorType tokenErrorType;
 
     public TokenAuthenticationException(TokenErrorType tokenErrorType, String message) {
-        super("401-1", message);
+        super(CommonErrorCode.UNAUTHORIZED, message);
         this.tokenErrorType = tokenErrorType;
     }
 
