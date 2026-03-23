@@ -8,22 +8,21 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
+import back.global.exception.CommonErrorCode;
 import back.global.response.RsData;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
-@RequiredArgsConstructor
 public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
     public static final String ERROR_CODE_ATTRIBUTE = "AUTH_ERROR_CODE";
     public static final String ERROR_MESSAGE_ATTRIBUTE = "AUTH_ERROR_MESSAGE";
 
-    private static final String DEFAULT_ERROR_CODE = "401-1";
-    private static final String DEFAULT_ERROR_MESSAGE = "로그인이 필요합니다.";
+    private static final String DEFAULT_ERROR_CODE = CommonErrorCode.UNAUTHORIZED.resultCode();
+    private static final String DEFAULT_ERROR_MESSAGE = CommonErrorCode.UNAUTHORIZED.defaultMessage();
 
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public void commence(
