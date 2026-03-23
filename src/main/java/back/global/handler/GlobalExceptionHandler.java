@@ -4,6 +4,8 @@ import java.util.Comparator;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -19,6 +21,8 @@ import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<RsData<Void>> handle(NoSuchElementException ex) {
         return toResponse(CommonErrorCode.NOT_FOUND);
@@ -72,8 +76,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ServiceException.class)
     public ResponseEntity<RsData<Void>> handle(ServiceException ex) {
-        RsData<Void> rsData = ex.getRsData();
-        return ResponseEntity.status(rsData.statusCode()).body(rsData);
+        log.warn(ex.getLogMessage());
+        return ResponseEntity.status(ex.getErrorCode().status()).body(ex.getRsData());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -88,6 +92,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<RsData<Void>> handle(Exception ex) {
+        log.error("[GlobalExceptionHandler#handle] unexpected error", ex);
         return toResponse(CommonErrorCode.INTERNAL_SERVER_ERROR);
     }
 
@@ -96,7 +101,6 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<RsData<Void>> toResponse(CommonErrorCode errorCode, String message) {
-        return ResponseEntity.status(errorCode.status())
-                .body(new RsData<>(errorCode.resultCode(), errorCode.statusCode(), message, null));
+        return ResponseEntity.status(errorCode.status()).body(new RsData<>(null, message));
     }
 }

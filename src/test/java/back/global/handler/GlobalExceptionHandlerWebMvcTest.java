@@ -35,41 +35,37 @@ class GlobalExceptionHandlerWebMvcTest {
     }
 
     @Test
-    @DisplayName("NoSuchElementException은 404-1로 매핑한다")
+    @DisplayName("NoSuchElementException은 404 상태와 기본 메시지로 매핑한다")
     void handleNoSuchElement() throws Exception {
         mockMvc.perform(get("/_test/not-found"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.resultCode").value("404-1"))
-                .andExpect(jsonPath("$.msg").value("해당 데이터가 존재하지 않습니다."));
+                .andExpect(jsonPath("$.message").value("해당 데이터가 존재하지 않습니다."));
     }
 
     @Test
-    @DisplayName("ServiceException(ErrorCode)은 코드에 맞는 상태/응답을 반환한다")
+    @DisplayName("ServiceException(ErrorCode)은 코드에 맞는 상태와 clientMessage를 반환한다")
     void handleServiceExceptionWithErrorCode() throws Exception {
         mockMvc.perform(get("/_test/service/not-found"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.resultCode").value("404-1"))
-                .andExpect(jsonPath("$.msg").value("회원이 존재하지 않습니다."));
+                .andExpect(jsonPath("$.message").value("회원이 존재하지 않습니다."));
     }
 
     @Test
-    @DisplayName("MethodArgumentNotValidException은 400-1 규약을 따른다")
+    @DisplayName("MethodArgumentNotValidException은 400 상태와 검증 메시지를 반환한다")
     void handleValidationException() throws Exception {
         mockMvc.perform(post("/_test/validation")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.resultCode").value("400-1"))
-                .andExpect(jsonPath("$.msg").value("name-NotBlank-이름은 필수입니다."));
+                .andExpect(jsonPath("$.message").value("name-NotBlank-이름은 필수입니다."));
     }
 
     @Test
-    @DisplayName("예상하지 못한 예외는 500-1로 변환한다")
+    @DisplayName("예상하지 못한 예외는 500 상태와 기본 메시지로 변환한다")
     void handleUnexpectedException() throws Exception {
         mockMvc.perform(get("/_test/unexpected"))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.resultCode").value("500-1"))
-                .andExpect(jsonPath("$.msg").value("서버 내부 오류가 발생했습니다."));
+                .andExpect(jsonPath("$.message").value("서버 내부 오류가 발생했습니다."));
     }
 
     @RestController
@@ -82,7 +78,10 @@ class GlobalExceptionHandlerWebMvcTest {
 
         @GetMapping("/_test/service/not-found")
         String serviceNotFound() {
-            throw new ServiceException(CommonErrorCode.NOT_FOUND, "회원이 존재하지 않습니다.");
+            throw new ServiceException(
+                    CommonErrorCode.NOT_FOUND,
+                    "[GlobalExceptionHandlerWebMvcTest#serviceNotFound] member not found",
+                    "회원이 존재하지 않습니다.");
         }
 
         @PostMapping("/_test/validation")

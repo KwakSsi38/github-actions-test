@@ -14,23 +14,22 @@ class RsDataTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    @DisplayName("resultCode에서 statusCode를 파싱한다")
-    void parseStatusCode() {
-        RsData<String> rsData = new RsData<>("201-1", "생성 성공", "ok");
+    @DisplayName("message-only 생성자는 data를 null로 초기화한다")
+    void messageOnlyConstructor() {
+        RsData<String> rsData = new RsData<>("생성 성공");
 
-        assertThat(rsData.statusCode()).isEqualTo(201);
+        assertThat(rsData.data()).isNull();
+        assertThat(rsData.message()).isEqualTo("생성 성공");
     }
 
     @Test
-    @DisplayName("JSON 직렬화 시 statusCode는 노출하지 않고 resultCode/msg/data를 유지한다")
+    @DisplayName("JSON 직렬화 시 data/message 포맷을 유지한다")
     void serializeContract() throws Exception {
-        RsData<Map<String, String>> rsData = new RsData<>("200-1", "성공", Map.of("id", "1"));
+        RsData<Map<String, String>> rsData = new RsData<>(Map.of("id", "1"), "성공");
 
         String json = objectMapper.writeValueAsString(rsData);
 
-        assertThat(json).contains("\"resultCode\":\"200-1\"");
-        assertThat(json).contains("\"msg\":\"성공\"");
         assertThat(json).contains("\"data\":{\"id\":\"1\"}");
-        assertThat(json).doesNotContain("statusCode");
+        assertThat(json).contains("\"message\":\"성공\"");
     }
 }
