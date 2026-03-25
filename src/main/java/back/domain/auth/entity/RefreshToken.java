@@ -21,16 +21,19 @@ public class RefreshToken extends BaseEntity {
     private String token;
 
     private RefreshToken(Long memberId, String token) {
-        this.memberId = requireNotNull(memberId, "memberId");
-        this.token = requireNotBlank(token, "token");
+        this.memberId = memberId;
+        this.token = token;
     }
 
     public static RefreshToken issue(Long memberId, String token) {
-        return new RefreshToken(memberId, token);
+        Long validatedMemberId = requireNotNull(memberId, "memberId");
+        String validatedToken = requireNotBlank(token, "token");
+        return new RefreshToken(validatedMemberId, validatedToken);
     }
 
     public void rotate(String token) {
-        this.token = requireNotBlank(token, "token");
+        String validatedToken = requireNotBlank(token, "token");
+        this.token = validatedToken;
     }
 
     public boolean matches(String token) {
