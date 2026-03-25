@@ -1,0 +1,38 @@
+{
+  "candidates": [
+    {
+      "skill_id": 1,
+      "skill_name": "Spring Backend Code Review",
+
+      "repository_name": "doc-agent",
+      "repository_url": "https://github.com/example/doc-agent",
+
+      "summary": "Spring 기반 백엔드 코드 리뷰를 자동화하고 개선 포인트를 제안하는 skill",
+
+      "primary_score": 0.89,
+
+      "metadata": {
+        "stars": 128,
+        "forks": 30,
+        "updated_at": "2026-03-20T12:30:00Z"
+      }
+    },
+    {
+      "skill_id": 2,
+      "skill_name": "API Documentation Generator",
+
+      "repository_name": "awesome-api-tools",
+      "repository_url": "https://github.com/example/awesome-api-tools",
+
+      "summary": "Swagger 기반 API 문서를 자동으로 생성하는 skill",
+
+      "primary_score": 0.83,
+
+      "metadata": {
+        "stars": 210,
+        "forks": 45,
+        "updated_at": "2026-02-10T09:10:00Z"
+      }
+    }
+  ]
+}
