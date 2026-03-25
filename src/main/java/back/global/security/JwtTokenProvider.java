@@ -69,7 +69,10 @@ public final class JwtTokenProvider {
         try {
             return Long.parseLong(claims.getSubject());
         } catch (NumberFormatException e) {
-            throw new TokenAuthenticationException(TokenErrorType.INVALID, "유효하지 않은 토큰입니다.");
+            throw new TokenAuthenticationException(
+                    TokenErrorType.INVALID,
+                    "[JwtTokenProvider#parseMemberId] token subject is not a valid number",
+                    "유효하지 않은 토큰입니다.");
         }
     }
 
@@ -91,7 +94,10 @@ public final class JwtTokenProvider {
     private String parseMemberRole(Claims claims) {
         Object roleClaim = claims.get(ROLE_CLAIM);
         if (!(roleClaim instanceof String roleValue) || roleValue.isBlank()) {
-            throw new TokenAuthenticationException(TokenErrorType.INVALID, "유효하지 않은 토큰입니다.");
+            throw new TokenAuthenticationException(
+                    TokenErrorType.INVALID,
+                    "[JwtTokenProvider#parseMemberRole] role claim is missing or blank",
+                    "유효하지 않은 토큰입니다.");
         }
         return roleValue;
     }
@@ -99,7 +105,10 @@ public final class JwtTokenProvider {
     private void validateTokenType(Claims claims, String expectedTokenType) {
         Object tokenType = claims.get(TOKEN_TYPE_CLAIM);
         if (!(tokenType instanceof String tokenTypeValue) || !expectedTokenType.equals(tokenTypeValue)) {
-            throw new TokenAuthenticationException(TokenErrorType.INVALID, "유효하지 않은 토큰입니다.");
+            throw new TokenAuthenticationException(
+                    TokenErrorType.INVALID,
+                    "[JwtTokenProvider#validateTokenType] token type is invalid or mismatched",
+                    "유효하지 않은 토큰입니다.");
         }
     }
 
@@ -111,9 +120,15 @@ public final class JwtTokenProvider {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (ExpiredJwtException e) {
-            throw new TokenAuthenticationException(TokenErrorType.EXPIRED, "만료된 토큰입니다.");
+            throw new TokenAuthenticationException(
+                    TokenErrorType.EXPIRED,
+                    "[JwtTokenProvider#parseClaims] token is expired",
+                    "만료된 토큰입니다.");
         } catch (JwtException | IllegalArgumentException e) {
-            throw new TokenAuthenticationException(TokenErrorType.INVALID, "유효하지 않은 토큰입니다.");
+            throw new TokenAuthenticationException(
+                    TokenErrorType.INVALID,
+                    "[JwtTokenProvider#parseClaims] token parsing failed",
+                    "유효하지 않은 토큰입니다.");
         }
     }
 

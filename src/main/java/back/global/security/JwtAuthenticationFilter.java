@@ -50,21 +50,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } catch (ServiceException exception) {
             SecurityContextHolder.clearContext();
-            request.setAttribute(RestAuthenticationEntryPoint.ERROR_CODE_ATTRIBUTE, "401-1");
-            request.setAttribute(
-                    RestAuthenticationEntryPoint.ERROR_MESSAGE_ATTRIBUTE, normalizeErrorMessage(exception));
+            String errorMessage = normalizeErrorMessage(exception);
+            request.setAttribute(RestAuthenticationEntryPoint.ERROR_MESSAGE_ATTRIBUTE, errorMessage);
             authenticationEntryPoint.commence(
                     request,
                     response,
-                    new InsufficientAuthenticationException(
-                            exception.getRsData().msg(), exception));
+                    new InsufficientAuthenticationException(errorMessage, exception));
         }
     }
 
     private String normalizeErrorMessage(ServiceException exception) {
         if (exception instanceof TokenAuthenticationException tokenException) {
             if (tokenException.tokenErrorType() == TokenErrorType.EXPIRED) {
-                return tokenException.getRsData().msg();
+                return tokenException.getClientMessage();
             }
         }
 
