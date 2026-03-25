@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 @Configuration
 @SuppressFBWarnings(
         value = "EI_EXPOSE_REP2",
-        justification = "Spring-managed singleton dependencies are intentionally injected by reference.")
+        justification = "스프링 DI로 주입되는 빈 참조이며, 의도된 패턴입니다.")
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
