@@ -6,9 +6,12 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -76,7 +79,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ServiceException.class)
     public ResponseEntity<RsData<Void>> handle(ServiceException ex) {
-        log.warn(ex.getLogMessage());
+        log.warn(
+                "[ServiceException] resultCode={}, status={}, message={}",
+                ex.getErrorCode().resultCode(),
+                ex.getErrorCode().statusCode(),
+                ex.getLogMessage());
         return ResponseEntity.status(ex.getErrorCode().status()).body(ex.getRsData());
     }
 
@@ -92,6 +99,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<RsData<Void>> handle(Exception ex) {
+        if (ex instanceof ErrorResponse errorResponse) {
+            return toResponse(errorResponse);
+        }
+
         log.error("[GlobalExceptionHandler#handle] unexpected error", ex);
         return toResponse(CommonErrorCode.INTERNAL_SERVER_ERROR);
     }
@@ -102,5 +113,18 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<RsData<Void>> toResponse(CommonErrorCode errorCode, String message) {
         return ResponseEntity.status(errorCode.status()).body(new RsData<>(null, message));
+    }
+
+    private ResponseEntity<RsData<Void>> toResponse(ErrorResponse errorResponse) {
+        ProblemDetail problemDetail = errorResponse.getBody();
+        String message = problemDetail == null ? null : problemDetail.getDetail();
+        if (message == null || message.isBlank()) {
+            HttpStatus resolvedStatus = HttpStatus.resolve(errorResponse.getStatusCode().value());
+            message = resolvedStatus != null
+                    ? resolvedStatus.getReasonPhrase()
+                    : CommonErrorCode.INTERNAL_SERVER_ERROR.defaultMessage();
+        }
+
+        return ResponseEntity.status(errorResponse.getStatusCode()).body(new RsData<>(null, message));
     }
 }

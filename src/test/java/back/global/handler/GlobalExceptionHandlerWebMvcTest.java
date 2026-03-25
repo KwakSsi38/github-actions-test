@@ -10,6 +10,7 @@ import java.util.NoSuchElementException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import back.global.exception.CommonErrorCode;
 import back.global.exception.ServiceException;
@@ -68,6 +70,14 @@ class GlobalExceptionHandlerWebMvcTest {
                 .andExpect(jsonPath("$.message").value("서버 내부 오류가 발생했습니다."));
     }
 
+    @Test
+    @DisplayName("Spring ErrorResponse 예외는 상태코드를 유지한다")
+    void handleErrorResponseException() throws Exception {
+        mockMvc.perform(get("/_test/error-response"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("요청 쿼리 파라미터가 올바르지 않습니다."));
+    }
+
     @RestController
     static class TestController {
 
@@ -92,6 +102,11 @@ class GlobalExceptionHandlerWebMvcTest {
         @GetMapping("/_test/unexpected")
         String unexpected() {
             throw new RuntimeException("boom");
+        }
+
+        @GetMapping("/_test/error-response")
+        String errorResponse() {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "요청 쿼리 파라미터가 올바르지 않습니다.");
         }
     }
 
