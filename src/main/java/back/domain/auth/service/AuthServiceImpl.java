@@ -3,6 +3,8 @@ package back.domain.auth.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import back.domain.auth.entity.RefreshToken;
 import back.domain.auth.repository.RefreshTokenRepository;
 import back.domain.member.entity.Member;
@@ -10,10 +12,8 @@ import back.domain.member.repository.MemberRepository;
 import back.global.exception.CommonErrorCode;
 import back.global.exception.ServiceException;
 import back.global.security.JwtTokenProvider;
-import lombok.RequiredArgsConstructor;
 
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AuthServiceImpl implements AuthService {
     private static final String INVALID_REFRESH_MESSAGE = "유효하지 않은 토큰입니다.";
@@ -23,6 +23,18 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final MemberRepository memberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+
+    @SuppressFBWarnings(
+            value = "EI_EXPOSE_REP2",
+            justification = "Spring-managed singleton dependencies are intentionally injected by reference.")
+    public AuthServiceImpl(
+            JwtTokenProvider jwtTokenProvider,
+            MemberRepository memberRepository,
+            RefreshTokenRepository refreshTokenRepository) {
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.memberRepository = memberRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
+    }
 
     @Override
     @Transactional
