@@ -2,6 +2,7 @@ package back.global.security;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
@@ -81,6 +82,7 @@ public final class JwtTokenProvider {
         Date expiration = new Date(now.getTime() + expirationMillis);
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(memberId))
                 .claim(EMAIL_CLAIM, email)
                 .claim(ROLE_CLAIM, role)
