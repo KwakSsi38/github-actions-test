@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.AfterEach;
@@ -125,5 +126,21 @@ class JwtAuthenticationFilterTest {
                 .commence(eq(request), eq(response), any(InsufficientAuthenticationException.class));
         assertThat(request.getAttribute(RestAuthenticationEntryPoint.ERROR_MESSAGE_ATTRIBUTE))
                 .isEqualTo("만료된 토큰입니다.");
+    }
+
+    @Test
+    @DisplayName("토큰 재발급 경로는 Authorization 헤더가 있어도 JWT 검증을 건너뛴다")
+    void doFilterInternal_refreshPathShouldBypassJwtValidation() throws Exception {
+        JwtAuthenticationFilter jwtAuthenticationFilter =
+                new JwtAuthenticationFilter(jwtTokenProvider, bearerTokenResolver, authenticationEntryPoint);
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth/token/refresh");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain filterChain = mock(FilterChain.class);
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer invalid-token");
+
+        jwtAuthenticationFilter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verifyNoInteractions(bearerTokenResolver, jwtTokenProvider, authenticationEntryPoint);
     }
 }
