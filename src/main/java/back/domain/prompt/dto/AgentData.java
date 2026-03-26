@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Getter
@@ -24,4 +25,8 @@ public class AgentData {
 
     @JsonProperty("raw_metadata")
     private Map<String, Object> rawMetadata;
+
+    public Map<String, Object> getRawMetadata() {
+        return rawMetadata == null ? null : new HashMap<>(rawMetadata);
+    }
 }
