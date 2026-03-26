@@ -7,6 +7,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +22,9 @@ import tools.jackson.databind.ObjectMapper;
 
 @Component
 public class GoogleTokenInfoVerifier implements GoogleIdTokenVerifier {
+    private static final String DEFAULT_TOKEN_INFO_BASE_URL = "https://oauth2.googleapis.com";
+    private static final Duration HTTP_CONNECT_TIMEOUT = Duration.ofSeconds(3);
+    private static final Duration HTTP_REQUEST_TIMEOUT = Duration.ofSeconds(5);
     private static final Set<String> ALLOWED_ISSUERS = Set.of("accounts.google.com", "https://accounts.google.com");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String INVALID_GOOGLE_TOKEN_MESSAGE = "유효하지 않은 구글 토큰입니다.";
@@ -29,12 +33,16 @@ public class GoogleTokenInfoVerifier implements GoogleIdTokenVerifier {
 
     private final String googleClientId;
     private final String tokenInfoBaseUrl;
+    private final HttpClient httpClient;
 
     public GoogleTokenInfoVerifier(
             @Value("${custom.oauth.google.client-id:}") String googleClientId,
             @Value("${custom.oauth.google.token-info-base-url:https://oauth2.googleapis.com}") String tokenInfoBaseUrl) {
         this.googleClientId = googleClientId;
-        this.tokenInfoBaseUrl = tokenInfoBaseUrl;
+        this.tokenInfoBaseUrl = normalizeBaseUrl(tokenInfoBaseUrl);
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(HTTP_CONNECT_TIMEOUT)
+                .build();
     }
 
     @Override
@@ -48,12 +56,12 @@ public class GoogleTokenInfoVerifier implements GoogleIdTokenVerifier {
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(buildTokenInfoUri(idToken))
+                .timeout(HTTP_REQUEST_TIMEOUT)
                 .GET()
                 .build();
 
         try {
-            HttpResponse<String> response = HttpClient.newHttpClient()
-                    .send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != HttpStatus.OK.value()) {
                 throw new ServiceException(
                         CommonErrorCode.UNAUTHORIZED,
@@ -80,6 +88,17 @@ public class GoogleTokenInfoVerifier implements GoogleIdTokenVerifier {
         String encodedToken = URLEncoder.encode(idToken, StandardCharsets.UTF_8);
         String uri = "%s/tokeninfo?id_token=%s".formatted(tokenInfoBaseUrl, encodedToken);
         return URI.create(uri);
+    }
+
+    private String normalizeBaseUrl(String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return DEFAULT_TOKEN_INFO_BASE_URL;
+        }
+
+        String trimmedBaseUrl = baseUrl.trim();
+        return trimmedBaseUrl.endsWith("/")
+                ? trimmedBaseUrl.substring(0, trimmedBaseUrl.length() - 1)
+                : trimmedBaseUrl;
     }
 
     private GoogleUserInfo parseAndValidate(String responseBody) throws IOException {

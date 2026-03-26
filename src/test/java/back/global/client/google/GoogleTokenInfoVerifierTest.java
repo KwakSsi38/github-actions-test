@@ -43,6 +43,30 @@ class GoogleTokenInfoVerifierTest {
     }
 
     @Test
+    void verify_whenBaseUrlEndsWithSlash_success() throws Exception {
+        String responseBody = """
+                {
+                  "sub": "google-sub-904",
+                  "email": "user904@example.com",
+                  "name": "User 904",
+                  "aud": "test-client-id",
+                  "iss": "https://accounts.google.com",
+                  "email_verified": "true"
+                }
+                """;
+
+        try (TokenInfoStubServer stubServer = TokenInfoStubServer.start(200, responseBody)) {
+            GoogleTokenInfoVerifier verifier = new GoogleTokenInfoVerifier("test-client-id", stubServer.baseUrl() + "/");
+
+            GoogleIdTokenVerifier.GoogleUserInfo verifiedUser = verifier.verify("id-token-904");
+
+            assertThat(verifiedUser.googleSub()).isEqualTo("google-sub-904");
+            assertThat(verifiedUser.email()).isEqualTo("user904@example.com");
+            assertThat(verifiedUser.name()).isEqualTo("User 904");
+        }
+    }
+
+    @Test
     void verify_whenAudienceMismatch() throws Exception {
         String responseBody = """
                 {
