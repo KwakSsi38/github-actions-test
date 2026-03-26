@@ -3,6 +3,7 @@ package back.domain.prompt.service;
 import back.domain.prompt.dto.PromptRepoItem;
 import back.domain.prompt.dto.SkillData;
 import back.domain.prompt.entity.Repository;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,12 +15,17 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class PromptServiceImpl implements PromptService {
 
     private final SkillNormalizeServiceImpl normalizeService;
     private final ObjectMapper objectMapper;
+
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2")
+    public PromptServiceImpl(SkillNormalizeServiceImpl normalizeService, ObjectMapper objectMapper) {
+        this.normalizeService = normalizeService;
+        this.objectMapper = objectMapper;
+    }
 
     @Value("${app.prompts.base-path:data/prompts}")
     private String promptsBasePath;
