@@ -2,7 +2,6 @@ package back.domain.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -47,28 +46,28 @@ class AuthServiceTest {
     @DisplayName("유효한 refresh 토큰이면 access/refresh를 재발급하고 refresh를 회전한다")
     void refresh_success() {
         Member member = createMember(1L, "user@example.com");
-        RefreshToken storedToken = RefreshToken.issue(1L, "old-refresh");
         when(jwtTokenProvider.getMemberIdFromRefreshToken("old-refresh")).thenReturn(1L);
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
-        when(refreshTokenRepository.findByMemberId(1L)).thenReturn(Optional.of(storedToken));
         when(jwtTokenProvider.generateAccessToken(1L, "user@example.com", "USER")).thenReturn("new-access");
         when(jwtTokenProvider.generateRefreshToken(1L, "user@example.com", "USER")).thenReturn("new-refresh");
-        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(refreshTokenRepository.rotateIfMatch(1L, "old-refresh", "new-refresh")).thenReturn(1);
 
         AuthTokenResult result = authService.refresh("old-refresh");
 
         assertThat(result.accessToken()).isEqualTo("new-access");
         assertThat(result.refreshToken()).isEqualTo("new-refresh");
-        assertThat(storedToken.getToken()).isEqualTo("new-refresh");
+        verify(refreshTokenRepository).rotateIfMatch(1L, "old-refresh", "new-refresh");
     }
 
     @Test
-    @DisplayName("저장소의 refresh 토큰과 불일치하면 401 예외를 던진다")
-    void refresh_whenStoredTokenMismatch() {
+    @DisplayName("조건부 회전이 실패하면 401 예외를 던진다")
+    void refresh_whenConditionalRotateFailed() {
         Member member = createMember(1L, "user@example.com");
         when(jwtTokenProvider.getMemberIdFromRefreshToken("old-refresh")).thenReturn(1L);
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
-        when(refreshTokenRepository.findByMemberId(1L)).thenReturn(Optional.of(RefreshToken.issue(1L, "other-refresh")));
+        when(jwtTokenProvider.generateAccessToken(1L, "user@example.com", "USER")).thenReturn("new-access");
+        when(jwtTokenProvider.generateRefreshToken(1L, "user@example.com", "USER")).thenReturn("new-refresh");
+        when(refreshTokenRepository.rotateIfMatch(1L, "old-refresh", "new-refresh")).thenReturn(0);
 
         assertThatThrownBy(() -> authService.refresh("old-refresh"))
                 .isInstanceOf(ServiceException.class)

@@ -34,15 +34,15 @@ public class AuthServiceImpl implements AuthService {
     public AuthTokenResult refresh(String refreshToken) {
         long memberId = jwtTokenProvider.getMemberIdFromRefreshToken(refreshToken);
         Member member = getMemberOrThrow(memberId);
-        RefreshToken storedRefreshToken = getStoredRefreshTokenOrThrow(memberId);
-        validateRefreshTokenMatch(storedRefreshToken, refreshToken);
 
         String accessToken =
                 jwtTokenProvider.generateAccessToken(member.getId(), member.getEmail(), member.getRole().name());
         String rotatedRefreshToken =
                 jwtTokenProvider.generateRefreshToken(member.getId(), member.getEmail(), member.getRole().name());
-        storedRefreshToken.rotate(rotatedRefreshToken);
-        refreshTokenRepository.save(storedRefreshToken);
+        int updatedRows = refreshTokenRepository.rotateIfMatch(memberId, refreshToken, rotatedRefreshToken);
+        if (updatedRows == 0) {
+            throw unauthorizedException("[AuthServiceImpl#refresh] conditional refresh token rotate failed");
+        }
 
         return new AuthTokenResult(accessToken, rotatedRefreshToken);
     }
