@@ -29,8 +29,14 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run Quality Gate (Checkstyle, Spotbugs, Test, JaCoCo)
+      - name: Run Quality Gate and Test
+          # 위에서 에러 났던 명령어들을 하나로 합치고 env를 추가했습니다.
         run: ./gradlew checkstyleMain spotbugsMain test jacocoTestReport jacocoTestCoverageVerification
+        env:
+          DB_URL: jdbc:h2:mem:testdb;MODE=PostgreSQL
+          DB_USERNAME: sa
+          DB_PASSWORD: ""
+          CUSTOM_JWT_SECRET_KEY: "start-ai-hub-default-secret-key-for-testing-purposes-only"
 
       - name: Publish Unit Test Results
         if: always()
@@ -47,3 +53,4 @@ jobs:
         with:
           name: test-reports
           path: build/reports/
+
