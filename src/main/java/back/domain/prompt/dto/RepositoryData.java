@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 @Getter
@@ -67,4 +68,12 @@ public class RepositoryData {
 
     @JsonProperty("raw_metadata")
     private Map<String, Object> rawMetadata;
+
+    public Map<String, Object> getRawMetadata() {
+        return rawMetadata == null ? null : new HashMap<>(rawMetadata);
+    }
+
+    public Map<String, Integer> getLanguageStats() {
+        return languageStats == null ? null : new HashMap<>(languageStats);
+    }
 }
