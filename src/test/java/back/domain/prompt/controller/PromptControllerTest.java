@@ -31,7 +31,6 @@ import org.springframework.web.context.WebApplicationContext;
 import back.global.response.RsData;
 
 @SpringBootTest
-@ActiveProfiles("test")
 class PromptControllerTest {
 
     @Autowired
