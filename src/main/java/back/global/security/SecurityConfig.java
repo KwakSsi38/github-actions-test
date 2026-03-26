@@ -26,7 +26,6 @@ import lombok.RequiredArgsConstructor;
         justification = "스프링 DI로 주입되는 빈 참조이며, 의도된 패턴입니다.")
 @RequiredArgsConstructor
 public class SecurityConfig {
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final RestAccessDeniedHandler restAccessDeniedHandler;
 
@@ -34,7 +33,8 @@ public class SecurityConfig {
     private List<String> allowedOriginPatterns;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter)
+            throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -69,6 +69,14 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter(
+            JwtTokenProvider jwtTokenProvider,
+            BearerTokenResolver bearerTokenResolver,
+            RestAuthenticationEntryPoint authenticationEntryPoint) {
+        return new JwtAuthenticationFilter(jwtTokenProvider, bearerTokenResolver, authenticationEntryPoint);
     }
 
     @Bean

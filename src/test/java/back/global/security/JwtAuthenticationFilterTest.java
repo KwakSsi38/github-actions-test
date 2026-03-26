@@ -143,4 +143,22 @@ class JwtAuthenticationFilterTest {
         verify(filterChain).doFilter(request, response);
         verifyNoInteractions(bearerTokenResolver, jwtTokenProvider, authenticationEntryPoint);
     }
+
+    @Test
+    @DisplayName("context-path가 있어도 토큰 재발급 경로는 JWT 검증을 건너뛴다")
+    void doFilterInternal_refreshPathWithContextPathShouldBypassJwtValidation() throws Exception {
+        JwtAuthenticationFilter jwtAuthenticationFilter =
+                new JwtAuthenticationFilter(jwtTokenProvider, bearerTokenResolver, authenticationEntryPoint);
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/app/api/v1/auth/token/refresh");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain filterChain = mock(FilterChain.class);
+        request.setContextPath("/app");
+        request.setServletPath("/api/v1/auth/token/refresh");
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer invalid-token");
+
+        jwtAuthenticationFilter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verifyNoInteractions(bearerTokenResolver, jwtTokenProvider, authenticationEntryPoint);
+    }
 }
