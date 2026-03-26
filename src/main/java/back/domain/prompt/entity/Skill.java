@@ -1,8 +1,11 @@
 package back.domain.prompt.entity;
 
 import back.global.jpa.entity.BaseEntity;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
@@ -11,13 +14,12 @@ import java.time.LocalDateTime;
 @Table(name = "skills")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Builder
-@AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 public class Skill extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "repository_id", nullable = false)
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     private Repository repository;
 
     @Column(name = "name", nullable = false, length = 150)
@@ -27,12 +29,27 @@ public class Skill extends BaseEntity {
     private String contentMd;
 
     @Column(name = "content_hash", length = 100)
-    private String contentHash;  // 파일 SHA 해시값
+    private String contentHash;
 
     @Column(name = "file_path", nullable = false, length = 500)
     private String filePath;
 
-    // 내용 변경 시 업데이트
+    public static Skill create(
+            Repository repository,
+            String name,
+            String contentMd,
+            String contentHash,
+            String filePath
+    ) {
+        Skill skill = new Skill();
+        skill.repository = repository;
+        skill.name = name;
+        skill.contentMd = contentMd;
+        skill.contentHash = contentHash;
+        skill.filePath = filePath;
+        return skill;
+    }
+
     public void update(String contentMd, String contentHash) {
         this.contentMd = contentMd;
         this.contentHash = contentHash;
