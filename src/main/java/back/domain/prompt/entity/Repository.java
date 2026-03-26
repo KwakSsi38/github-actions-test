@@ -2,24 +2,22 @@ package back.domain.prompt.entity;
 
 import back.domain.prompt.enums.OwnerType;
 import back.global.jpa.entity.BaseEntity;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Entity
 @Table(name = "repositories")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Builder
-@AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 public class Repository extends BaseEntity {
 
@@ -30,7 +28,7 @@ public class Repository extends BaseEntity {
     private String name;
 
     @Column(name = "source_repo", nullable = false, length = 255)
-    private String sourceRepo;  // "owner/repo" 형식
+    private String sourceRepo;  // owner/repo
 
     @Column(name = "source_uri", nullable = false, unique = true, length = 500)
     private String sourceUri;
@@ -40,7 +38,7 @@ public class Repository extends BaseEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "tags_json", columnDefinition = "jsonb")
-    private Set<String> tagsJson;
+    private Set<String> tagsJson = new HashSet<>();
 
     @Column(name = "star_count")
     private Integer starCount;
@@ -53,7 +51,7 @@ public class Repository extends BaseEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "language_stats", columnDefinition = "jsonb")
-    private Map<String, Integer> languageStats;
+    private Map<String, Integer> languageStats = new HashMap<>();
 
     @Column(name = "license", length = 50)
     private String license;
@@ -85,19 +83,67 @@ public class Repository extends BaseEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "raw_metadata", columnDefinition = "jsonb")
-    private Map<String, Object> rawMetadata;
+    private Map<String, Object> rawMetadata = new HashMap<>();
 
-    // 연관관계
     @OneToMany(mappedBy = "repository", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
     private List<Skill> skills = new ArrayList<>();
 
     @OneToOne(mappedBy = "repository", cascade = CascadeType.ALL, orphanRemoval = true)
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP")
     private Agent agent;
 
-    // 변경 감지 후 업데이트
-    public void update(Integer starCount, Integer forkCount, String etag,
-                       LocalDateTime sourceUpdatedAt) {
+    public static Repository create(
+            Long githubId,
+            String name,
+            String sourceRepo,
+            String sourceUri,
+            String summary,
+            Set<String> tagsJson,
+            Integer starCount,
+            Integer forkCount,
+            Integer size,
+            Map<String, Integer> languageStats,
+            String license,
+            String homepage,
+            String ownerAvatarUrl,
+            OwnerType ownerType,
+            Boolean isOfficial,
+            String defaultBranch,
+            String etag,
+            LocalDateTime sourceUpdatedAt,
+            Boolean active,
+            Map<String, Object> rawMetadata
+    ) {
+        Repository repository = new Repository();
+        repository.githubId = githubId;
+        repository.name = name;
+        repository.sourceRepo = sourceRepo;
+        repository.sourceUri = sourceUri;
+        repository.summary = summary;
+        repository.tagsJson = tagsJson == null ? new HashSet<>() : new HashSet<>(tagsJson);
+        repository.starCount = starCount;
+        repository.forkCount = forkCount;
+        repository.size = size;
+        repository.languageStats = languageStats == null ? new HashMap<>() : new HashMap<>(languageStats);
+        repository.license = license;
+        repository.homepage = homepage;
+        repository.ownerAvatarUrl = ownerAvatarUrl;
+        repository.ownerType = ownerType;
+        repository.isOfficial = isOfficial;
+        repository.defaultBranch = defaultBranch;
+        repository.etag = etag;
+        repository.sourceUpdatedAt = sourceUpdatedAt;
+        repository.active = active != null ? active : Boolean.TRUE;
+        repository.rawMetadata = rawMetadata == null ? new HashMap<>() : new HashMap<>(rawMetadata);
+        return repository;
+    }
+
+    public void update(
+            Integer starCount,
+            Integer forkCount,
+            String etag,
+            LocalDateTime sourceUpdatedAt
+    ) {
         this.starCount = starCount;
         this.forkCount = forkCount;
         this.etag = etag;
@@ -107,5 +153,21 @@ public class Repository extends BaseEntity {
 
     public void deactivate() {
         this.active = false;
+    }
+
+    public Set<String> getTagsJson() {
+        return new HashSet<>(tagsJson);
+    }
+
+    public Map<String, Integer> getLanguageStats() {
+        return new HashMap<>(languageStats);
+    }
+
+    public Map<String, Object> getRawMetadata() {
+        return new HashMap<>(rawMetadata);
+    }
+
+    public List<Skill> getSkills() {
+        return new ArrayList<>(skills);
     }
 }
