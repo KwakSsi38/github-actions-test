@@ -8,10 +8,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import back.domain.auth.dto.request.GoogleLoginRequest;
 import back.domain.auth.dto.request.LogoutAuthRequest;
 import back.domain.auth.dto.request.RefreshAuthTokenRequest;
+import back.domain.auth.dto.response.GoogleLoginResponse;
 import back.domain.auth.dto.response.RefreshAuthTokenResponse;
 import back.domain.auth.service.AuthService;
+import back.domain.auth.service.GoogleLoginResult;
 import back.domain.auth.service.AuthTokenResult;
 import back.global.exception.CommonErrorCode;
 import back.global.exception.ServiceException;
@@ -26,6 +29,20 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
+
+    @PostMapping("/google/login")
+    public ResponseEntity<RsData<GoogleLoginResponse>> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        GoogleLoginResult loginResult = authService.loginWithGoogle(request.idToken());
+        GoogleLoginResponse response = new GoogleLoginResponse(
+                loginResult.memberId(),
+                loginResult.name(),
+                loginResult.email(),
+                loginResult.role(),
+                loginResult.accessToken(),
+                loginResult.refreshToken());
+
+        return ResponseEntity.ok(new RsData<>(response, "로그인 성공"));
+    }
 
     @PostMapping("/token/refresh")
     public ResponseEntity<RsData<RefreshAuthTokenResponse>> refresh(
