@@ -1,5 +1,9 @@
 package back.domain.auth.service;
 
+import java.util.Arrays;
+import java.util.Locale;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,10 +28,30 @@ public class AuthServiceImpl implements AuthService {
     private static final String INVALID_REFRESH_MESSAGE = "유효하지 않은 토큰입니다.";
     private static final String TOKEN_OWNER_MISMATCH_MESSAGE = "본인 토큰이 아닙니다.";
     private static final String MEMBER_NOT_FOUND_MESSAGE = "회원이 존재하지 않습니다.";
+    private static final String EMAIL_CONFLICT_MESSAGE = "이미 사용 중인 이메일입니다.";
 
     private final JwtTokenProvider jwtTokenProvider;
     private final MemberRepository memberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final GoogleIdTokenVerifier googleIdTokenVerifier;
+
+    @Value("${ADMIN_ALLOWLIST_EMAILS:}")
+    private String adminAllowlistEmails;
+
+    @Override
+    @Transactional
+    public GoogleLoginResult loginWithGoogle(String idToken) {
+        GoogleIdTokenVerifier.GoogleUserInfo googleUserInfo = googleIdTokenVerifier.verify(idToken);
+        Member member = upsertMember(googleUserInfo.googleSub(), googleUserInfo.email(), googleUserInfo.name());
+        String role = member.getRole().name();
+
+        String accessToken = jwtTokenProvider.generateAccessToken(member.getId(), member.getEmail(), role);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(member.getId(), member.getEmail(), role);
+        saveOrRotateRefreshToken(member.getId(), refreshToken);
+
+        return new GoogleLoginResult(
+                member.getId(), member.getName(), member.getEmail(), role, accessToken, refreshToken);
+    }
 
     @Override
     @Transactional
@@ -61,6 +85,71 @@ public class AuthServiceImpl implements AuthService {
         refreshTokenRepository.deleteByMemberId(authenticatedMemberId);
     }
 
+    private Member upsertMember(String googleSub, String email, String name) {
+        return memberRepository
+                .findByGoogleSub(googleSub)
+                .map(existingMember -> updateExistingMember(existingMember, email, name))
+                .orElseGet(() -> createNewMember(googleSub, email, name));
+    }
+
+    private Member updateExistingMember(Member existingMember, String email, String name) {
+        if (!existingMember.getEmail().equals(email)) {
+            validateEmailConflict(email, existingMember.getId());
+            existingMember.updateEmail(email);
+        }
+
+        if (!existingMember.getName().equals(name)) {
+            existingMember.updateName(name);
+        }
+
+        if (isAdminAllowlistEmail(email) && !existingMember.isAdmin()) {
+            existingMember.promoteToAdmin();
+        }
+
+        return memberRepository.save(existingMember);
+    }
+
+    private Member createNewMember(String googleSub, String email, String name) {
+        validateEmailConflict(email, null);
+        Member createdMember =
+                isAdminAllowlistEmail(email)
+                        ? Member.createAdmin(googleSub, email, name)
+                        : Member.createUser(googleSub, email, name);
+        return memberRepository.save(createdMember);
+    }
+
+    private void validateEmailConflict(String email, Long currentMemberId) {
+        memberRepository.findByEmail(email).ifPresent(existingByEmail -> {
+            if (currentMemberId == null || !currentMemberId.equals(existingByEmail.getId())) {
+                throw conflictException("[AuthServiceImpl#validateEmailConflict] email is already assigned");
+            }
+        });
+    }
+
+    private boolean isAdminAllowlistEmail(String email) {
+        if (adminAllowlistEmails == null || adminAllowlistEmails.isBlank()) {
+            return false;
+        }
+
+        String normalizedEmail = normalizeEmail(email);
+        return Arrays.stream(adminAllowlistEmails.split(","))
+                .map(String::trim)
+                .filter(candidate -> !candidate.isBlank())
+                .map(this::normalizeEmail)
+                .anyMatch(normalizedEmail::equals);
+    }
+
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private void saveOrRotateRefreshToken(long memberId, String refreshToken) {
+        refreshTokenRepository.findByMemberId(memberId).ifPresentOrElse(existingRefreshToken -> {
+            existingRefreshToken.rotate(refreshToken);
+            refreshTokenRepository.save(existingRefreshToken);
+        }, () -> refreshTokenRepository.save(RefreshToken.issue(memberId, refreshToken)));
+    }
+
     private Member getMemberOrThrow(long memberId) {
         return memberRepository.findById(memberId).orElseThrow(() -> new ServiceException(
                 CommonErrorCode.NOT_FOUND,
@@ -85,5 +174,9 @@ public class AuthServiceImpl implements AuthService {
 
     private ServiceException forbiddenException(String logMessage) {
         return new ServiceException(CommonErrorCode.FORBIDDEN, logMessage, TOKEN_OWNER_MISMATCH_MESSAGE);
+    }
+
+    private ServiceException conflictException(String logMessage) {
+        return new ServiceException(CommonErrorCode.CONFLICT, logMessage, EMAIL_CONFLICT_MESSAGE);
     }
 }

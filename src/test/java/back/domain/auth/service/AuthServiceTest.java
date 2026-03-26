@@ -2,6 +2,7 @@ package back.domain.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,11 +36,56 @@ class AuthServiceTest {
     @Mock
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Mock
+    private GoogleIdTokenVerifier googleIdTokenVerifier;
+
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthServiceImpl(jwtTokenProvider, memberRepository, refreshTokenRepository);
+        authService = new AuthServiceImpl(jwtTokenProvider, memberRepository, refreshTokenRepository, googleIdTokenVerifier);
+    }
+
+    @Test
+    @DisplayName("구글 로그인 신규 회원이면 회원을 생성하고 access/refresh를 발급한다")
+    void loginWithGoogle_newMember_success() {
+        when(googleIdTokenVerifier.verify("google-id-token"))
+                .thenReturn(new GoogleIdTokenVerifier.GoogleUserInfo("google-sub-500", "new@example.com", "New User"));
+        when(memberRepository.findByGoogleSub("google-sub-500")).thenReturn(Optional.empty());
+        when(memberRepository.findByEmail("new@example.com")).thenReturn(Optional.empty());
+        when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> {
+            Member saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 500L);
+            return saved;
+        });
+        when(jwtTokenProvider.generateAccessToken(500L, "new@example.com", "USER")).thenReturn("issued-access");
+        when(jwtTokenProvider.generateRefreshToken(500L, "new@example.com", "USER")).thenReturn("issued-refresh");
+        when(refreshTokenRepository.findByMemberId(500L)).thenReturn(Optional.empty());
+        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        GoogleLoginResult result = authService.loginWithGoogle("google-id-token");
+
+        assertThat(result.memberId()).isEqualTo(500L);
+        assertThat(result.role()).isEqualTo("USER");
+        assertThat(result.accessToken()).isEqualTo("issued-access");
+        assertThat(result.refreshToken()).isEqualTo("issued-refresh");
+    }
+
+    @Test
+    @DisplayName("구글 로그인 신규 회원 생성 시 이메일이 이미 다른 사용자에 매핑되어 있으면 409 예외를 던진다")
+    void loginWithGoogle_whenEmailConflict() {
+        Member otherMember = createMember(100L, "dup@example.com");
+        when(googleIdTokenVerifier.verify("google-id-token"))
+                .thenReturn(new GoogleIdTokenVerifier.GoogleUserInfo("google-sub-777", "dup@example.com", "Dup User"));
+        when(memberRepository.findByGoogleSub("google-sub-777")).thenReturn(Optional.empty());
+        when(memberRepository.findByEmail("dup@example.com")).thenReturn(Optional.of(otherMember));
+
+        assertThatThrownBy(() -> authService.loginWithGoogle("google-id-token"))
+                .isInstanceOf(ServiceException.class)
+                .satisfies(exception -> {
+                    ServiceException serviceException = (ServiceException) exception;
+                    assertThat(serviceException.getErrorCode()).isEqualTo(CommonErrorCode.CONFLICT);
+                });
     }
 
     @Test
