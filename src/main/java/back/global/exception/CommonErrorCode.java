@@ -8,6 +8,7 @@ public enum CommonErrorCode implements ErrorCode {
     UNAUTHORIZED("401-1", HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."),
     FORBIDDEN("403-1", HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
     NOT_FOUND("404-1", HttpStatus.NOT_FOUND, "해당 데이터가 존재하지 않습니다."),
+    CONFLICT("409-1", HttpStatus.CONFLICT, "요청이 충돌했습니다."),
     INTERNAL_SERVER_ERROR("500-1", HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
     private final String resultCode;

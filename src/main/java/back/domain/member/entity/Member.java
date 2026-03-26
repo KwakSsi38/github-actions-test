@@ -56,6 +56,10 @@ public class Member extends BaseEntity {
         this.name = requireNotBlank(name, "name");
     }
 
+    public void updateEmail(String email) {
+        this.email = requireNotBlank(email, "email");
+    }
+
     public void promoteToAdmin() {
         this.role = MemberRole.ADMIN;
     }
