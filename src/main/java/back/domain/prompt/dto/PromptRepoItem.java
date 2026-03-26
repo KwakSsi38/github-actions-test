@@ -20,4 +20,8 @@ public class PromptRepoItem {
 
     @JsonProperty("agent")
     private AgentData agent;
+
+    public List<SkillData> getSkills() {
+        return skills == null ? null : List.copyOf(skills);
+    }
 }
