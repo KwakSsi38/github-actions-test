@@ -10,7 +10,9 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -183,13 +185,7 @@ class SkillNormalizeServiceTest {
                 "etag-old",
                 LocalDateTime.parse("2026-03-26T10:00:00")
         );
-        Skill existing = Skill.builder()
-                .repository(repository)
-                .name("alpha")
-                .contentMd("old content")
-                .contentHash("old-hash")
-                .filePath("skills/alpha.md")
-                .build();
+        Skill existing = Skill.create(repository, "alpha", "old content", "old-hash", "skills/alpha.md");
         SkillData skillData = skillData("alpha", "skills/alpha.md", "new content", "new-hash");
         when(skillRepository.findByRepositoryIdAndName(1L, "alpha")).thenReturn(Optional.of(existing));
 
@@ -241,12 +237,7 @@ class SkillNormalizeServiceTest {
                 "etag-old",
                 LocalDateTime.parse("2026-03-26T10:00:00")
         );
-        Agent existing = Agent.builder()
-                .repository(repository)
-                .contentMd("old agent content")
-                .contentHash("old-agent-hash")
-                .filePath("AGENTS.md")
-                .build();
+        Agent existing = Agent.create(repository, "old agent content", "old-agent-hash", "AGENTS.md");
         AgentData agentData = agentData("codex", "AGENTS.md", "new agent content", "new-agent-hash");
         when(agentRepository.findByRepositoryId(1L)).thenReturn(Optional.of(existing));
 
@@ -335,23 +326,28 @@ class SkillNormalizeServiceTest {
             String etag,
             LocalDateTime sourceUpdatedAt
     ) {
-        Repository repository = Repository.builder()
-                .githubId(githubId)
-                .name("demo-repo")
-                .sourceRepo(sourceRepo)
-                .sourceUri("https://example.com/" + sourceRepo)
-                .summary("demo summary")
-                .starCount(starCount)
-                .forkCount(forkCount)
-                .size(50)
-                .license("MIT")
-                .ownerType(OwnerType.USER)
-                .isOfficial(true)
-                .defaultBranch("main")
-                .etag(etag)
-                .sourceUpdatedAt(sourceUpdatedAt)
-                .active(true)
-                .build();
+        Repository repository = Repository.create(
+                githubId,
+                "demo-repo",
+                sourceRepo,
+                "https://example.com/" + sourceRepo,
+                "demo summary",
+                Set.of("java", "kotlin"),
+                starCount,
+                forkCount,
+                50,
+                Map.of("Java", 90, "Kotlin", 10),
+                "MIT",
+                "https://example.com",
+                "https://example.com/avatar.png",
+                OwnerType.USER,
+                true,
+                "main",
+                etag,
+                sourceUpdatedAt,
+                true,
+                Map.of("category", "demo")
+        );
         ReflectionTestUtils.setField(repository, "id", id);
         return repository;
     }
