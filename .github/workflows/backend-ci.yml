@@ -15,6 +15,21 @@ jobs:
   quality-gate:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -30,12 +45,11 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Quality Gate and Test
-          # 위에서 에러 났던 명령어들을 하나로 합치고 env를 추가했습니다.
         run: ./gradlew checkstyleMain spotbugsMain test jacocoTestReport jacocoTestCoverageVerification
         env:
-          DB_URL: jdbc:h2:mem:testdb;MODE=PostgreSQL
-          DB_USERNAME: sa
-          DB_PASSWORD: ""
+          DB_URL: jdbc:postgresql://localhost:5432/testdb
+          DB_USERNAME: postgres
+          DB_PASSWORD: password
           CUSTOM_JWT_SECRET_KEY: "start-ai-hub-default-secret-key-for-testing-purposes-only"
 
       - name: Publish Unit Test Results
