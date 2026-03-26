@@ -17,6 +17,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +34,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import back.domain.prompt.dto.SkillData;
 import back.domain.prompt.entity.Repository;
+import back.domain.prompt.enums.OwnerType;
 
 @SpringBootTest
 class PromptServiceImplTest {
@@ -156,14 +159,28 @@ class PromptServiceImplTest {
     }
 
     private Repository repository(Long id, String sourceRepo) {
-        Repository repository = Repository.builder()
-                .githubId(100L)
-                .name("demo-repo")
-                .sourceRepo(sourceRepo)
-                .sourceUri("https://example.com/" + sourceRepo)
-                .sourceUpdatedAt(LocalDateTime.parse("2026-03-26T00:00:00"))
-                .active(true)
-                .build();
+        Repository repository = Repository.create(
+                100L,
+                "demo-repo",
+                sourceRepo,
+                "https://example.com/" + sourceRepo,
+                "demo summary",
+                Set.of("java"),
+                10,
+                3,
+                50,
+                Map.of("Java", 90),
+                "MIT",
+                "https://example.com",
+                "https://example.com/avatar.png",
+                OwnerType.USER,
+                true,
+                "main",
+                "etag-1",
+                LocalDateTime.parse("2026-03-26T00:00:00"),
+                true,
+                Map.of("category", "demo")
+        );
         ReflectionTestUtils.setField(repository, "id", id);
         return repository;
     }
