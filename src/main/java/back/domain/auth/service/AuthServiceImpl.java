@@ -9,6 +9,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
+import back.domain.auth.port.GoogleIdTokenVerifier;
+import back.domain.auth.dto.response.GoogleLoginResponse;
+import back.domain.auth.dto.response.RefreshAuthTokenResponse;
 import back.domain.auth.entity.RefreshToken;
 import back.domain.auth.repository.RefreshTokenRepository;
 import back.domain.member.entity.Member;
@@ -40,7 +43,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public GoogleLoginResult loginWithGoogle(String idToken) {
+    public GoogleLoginResponse loginWithGoogle(String idToken) {
         GoogleIdTokenVerifier.GoogleUserInfo googleUserInfo = googleIdTokenVerifier.verify(idToken);
         Member member = upsertMember(googleUserInfo.googleSub(), googleUserInfo.email(), googleUserInfo.name());
         String role = member.getRole().name();
@@ -49,13 +52,13 @@ public class AuthServiceImpl implements AuthService {
         String refreshToken = jwtTokenProvider.generateRefreshToken(member.getId(), member.getEmail(), role);
         saveOrRotateRefreshToken(member.getId(), refreshToken);
 
-        return new GoogleLoginResult(
+        return new GoogleLoginResponse(
                 member.getId(), member.getName(), member.getEmail(), role, accessToken, refreshToken);
     }
 
     @Override
     @Transactional
-    public AuthTokenResult refresh(String refreshToken) {
+    public RefreshAuthTokenResponse refresh(String refreshToken) {
         long memberId = jwtTokenProvider.getMemberIdFromRefreshToken(refreshToken);
         Member member = getMemberOrThrow(memberId);
 
@@ -65,10 +68,13 @@ public class AuthServiceImpl implements AuthService {
                 jwtTokenProvider.generateRefreshToken(member.getId(), member.getEmail(), member.getRole().name());
         int updatedRows = refreshTokenRepository.rotateIfMatch(memberId, refreshToken, rotatedRefreshToken);
         if (updatedRows == 0) {
-            throw unauthorizedException("[AuthServiceImpl#refresh] conditional refresh token rotate failed");
+            throw new ServiceException(
+                    CommonErrorCode.UNAUTHORIZED,
+                    "[AuthServiceImpl#refresh] conditional refresh token rotate failed",
+                    INVALID_REFRESH_MESSAGE);
         }
 
-        return new AuthTokenResult(accessToken, rotatedRefreshToken);
+        return new RefreshAuthTokenResponse(accessToken, rotatedRefreshToken);
     }
 
     @Override
@@ -76,8 +82,10 @@ public class AuthServiceImpl implements AuthService {
     public void logout(long authenticatedMemberId, String refreshToken) {
         long tokenOwnerId = jwtTokenProvider.getMemberIdFromRefreshToken(refreshToken);
         if (authenticatedMemberId != tokenOwnerId) {
-            throw forbiddenException(
-                    "[AuthServiceImpl#logout] refresh token owner and authenticated member do not match");
+            throw new ServiceException(
+                    CommonErrorCode.FORBIDDEN,
+                    "[AuthServiceImpl#logout] refresh token owner and authenticated member do not match",
+                    TOKEN_OWNER_MISMATCH_MESSAGE);
         }
 
         RefreshToken storedRefreshToken = getStoredRefreshTokenOrThrow(tokenOwnerId);
@@ -121,7 +129,10 @@ public class AuthServiceImpl implements AuthService {
     private void validateEmailConflict(String email, Long currentMemberId) {
         memberRepository.findByEmail(email).ifPresent(existingByEmail -> {
             if (currentMemberId == null || !currentMemberId.equals(existingByEmail.getId())) {
-                throw conflictException("[AuthServiceImpl#validateEmailConflict] email is already assigned");
+                throw new ServiceException(
+                        CommonErrorCode.CONFLICT,
+                        "[AuthServiceImpl#validateEmailConflict] email is already assigned",
+                        EMAIL_CONFLICT_MESSAGE);
             }
         });
     }
@@ -158,25 +169,18 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private RefreshToken getStoredRefreshTokenOrThrow(long memberId) {
-        return refreshTokenRepository.findByMemberId(memberId).orElseThrow(() -> unauthorizedException(
-                "[AuthServiceImpl#getStoredRefreshTokenOrThrow] stored refresh token not found"));
+        return refreshTokenRepository.findByMemberId(memberId).orElseThrow(() -> new ServiceException(
+                CommonErrorCode.UNAUTHORIZED,
+                "[AuthServiceImpl#getStoredRefreshTokenOrThrow] stored refresh token not found",
+                INVALID_REFRESH_MESSAGE));
     }
 
     private void validateRefreshTokenMatch(RefreshToken storedRefreshToken, String refreshToken) {
         if (!storedRefreshToken.matches(refreshToken)) {
-            throw unauthorizedException("[AuthServiceImpl#validateRefreshTokenMatch] refresh token mismatch");
+            throw new ServiceException(
+                    CommonErrorCode.UNAUTHORIZED,
+                    "[AuthServiceImpl#validateRefreshTokenMatch] refresh token mismatch",
+                    INVALID_REFRESH_MESSAGE);
         }
-    }
-
-    private ServiceException unauthorizedException(String logMessage) {
-        return new ServiceException(CommonErrorCode.UNAUTHORIZED, logMessage, INVALID_REFRESH_MESSAGE);
-    }
-
-    private ServiceException forbiddenException(String logMessage) {
-        return new ServiceException(CommonErrorCode.FORBIDDEN, logMessage, TOKEN_OWNER_MISMATCH_MESSAGE);
-    }
-
-    private ServiceException conflictException(String logMessage) {
-        return new ServiceException(CommonErrorCode.CONFLICT, logMessage, EMAIL_CONFLICT_MESSAGE);
     }
 }

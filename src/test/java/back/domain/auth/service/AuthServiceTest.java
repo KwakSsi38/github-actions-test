@@ -16,6 +16,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import back.domain.auth.port.GoogleIdTokenVerifier;
+import back.domain.auth.dto.response.GoogleLoginResponse;
+import back.domain.auth.dto.response.RefreshAuthTokenResponse;
 import back.domain.auth.entity.RefreshToken;
 import back.domain.auth.repository.RefreshTokenRepository;
 import back.domain.member.entity.Member;
@@ -63,7 +66,7 @@ class AuthServiceTest {
         when(refreshTokenRepository.findByMemberId(500L)).thenReturn(Optional.empty());
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        GoogleLoginResult result = authService.loginWithGoogle("google-id-token");
+        GoogleLoginResponse result = authService.loginWithGoogle("google-id-token");
 
         assertThat(result.memberId()).isEqualTo(500L);
         assertThat(result.role()).isEqualTo("USER");
@@ -98,7 +101,7 @@ class AuthServiceTest {
         when(jwtTokenProvider.generateRefreshToken(1L, "user@example.com", "USER")).thenReturn("new-refresh");
         when(refreshTokenRepository.rotateIfMatch(1L, "old-refresh", "new-refresh")).thenReturn(1);
 
-        AuthTokenResult result = authService.refresh("old-refresh");
+        RefreshAuthTokenResponse result = authService.refresh("old-refresh");
 
         assertThat(result.accessToken()).isEqualTo("new-access");
         assertThat(result.refreshToken()).isEqualTo("new-refresh");

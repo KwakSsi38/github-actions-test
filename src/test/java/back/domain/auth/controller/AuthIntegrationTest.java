@@ -23,9 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import back.domain.auth.port.GoogleIdTokenVerifier;
 import back.domain.auth.entity.RefreshToken;
 import back.domain.auth.repository.RefreshTokenRepository;
-import back.domain.auth.service.GoogleIdTokenVerifier;
 import back.domain.member.entity.Member;
 import back.domain.member.entity.MemberRole;
 import back.domain.member.repository.MemberRepository;

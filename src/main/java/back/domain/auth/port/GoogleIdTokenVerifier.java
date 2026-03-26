@@ -1,4 +1,4 @@
-package back.domain.auth.service;
+package back.domain.auth.port;
 
 public interface GoogleIdTokenVerifier {
     GoogleUserInfo verify(String idToken);

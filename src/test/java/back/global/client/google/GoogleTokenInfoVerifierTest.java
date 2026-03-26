@@ -1,4 +1,4 @@
-package back.domain.auth.service;
+package back.global.client.google;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import com.sun.net.httpserver.HttpServer;
 
+import back.domain.auth.port.GoogleIdTokenVerifier;
 import back.global.exception.CommonErrorCode;
 import back.global.exception.ServiceException;
 

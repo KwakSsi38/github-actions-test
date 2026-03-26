@@ -1,4 +1,4 @@
-package back.domain.auth.service;
+package back.global.client.google;
 
 import java.io.IOException;
 import java.net.URI;
@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
+import back.domain.auth.port.GoogleIdTokenVerifier;
 import back.global.exception.CommonErrorCode;
 import back.global.exception.ServiceException;
 import tools.jackson.databind.JsonNode;
@@ -54,8 +55,10 @@ public class GoogleTokenInfoVerifier implements GoogleIdTokenVerifier {
             HttpResponse<String> response = HttpClient.newHttpClient()
                     .send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != HttpStatus.OK.value()) {
-                throw unauthorizedException(
-                        "[GoogleTokenInfoVerifier#verify] tokeninfo status is not 200: " + response.statusCode());
+                throw new ServiceException(
+                        CommonErrorCode.UNAUTHORIZED,
+                        "[GoogleTokenInfoVerifier#verify] tokeninfo status is not 200: " + response.statusCode(),
+                        INVALID_GOOGLE_TOKEN_MESSAGE);
             }
 
             return parseAndValidate(response.body());
@@ -88,15 +91,24 @@ public class GoogleTokenInfoVerifier implements GoogleIdTokenVerifier {
         String issuer = getRequiredText(root, "iss");
 
         if (!googleClientId.equals(audience)) {
-            throw unauthorizedException("[GoogleTokenInfoVerifier#parseAndValidate] audience mismatch");
+            throw new ServiceException(
+                    CommonErrorCode.UNAUTHORIZED,
+                    "[GoogleTokenInfoVerifier#parseAndValidate] audience mismatch",
+                    INVALID_GOOGLE_TOKEN_MESSAGE);
         }
 
         if (!ALLOWED_ISSUERS.contains(issuer)) {
-            throw unauthorizedException("[GoogleTokenInfoVerifier#parseAndValidate] issuer is not allowed");
+            throw new ServiceException(
+                    CommonErrorCode.UNAUTHORIZED,
+                    "[GoogleTokenInfoVerifier#parseAndValidate] issuer is not allowed",
+                    INVALID_GOOGLE_TOKEN_MESSAGE);
         }
 
         if (!isEmailVerified(root.get("email_verified"))) {
-            throw unauthorizedException("[GoogleTokenInfoVerifier#parseAndValidate] email is not verified");
+            throw new ServiceException(
+                    CommonErrorCode.UNAUTHORIZED,
+                    "[GoogleTokenInfoVerifier#parseAndValidate] email is not verified",
+                    INVALID_GOOGLE_TOKEN_MESSAGE);
         }
 
         return new GoogleUserInfo(googleSub, email, name);
@@ -105,12 +117,18 @@ public class GoogleTokenInfoVerifier implements GoogleIdTokenVerifier {
     private String getRequiredText(JsonNode root, String fieldName) {
         JsonNode fieldNode = root.get(fieldName);
         if (fieldNode == null) {
-            throw unauthorizedException("[GoogleTokenInfoVerifier#getRequiredText] field is missing: " + fieldName);
+            throw new ServiceException(
+                    CommonErrorCode.UNAUTHORIZED,
+                    "[GoogleTokenInfoVerifier#getRequiredText] field is missing: " + fieldName,
+                    INVALID_GOOGLE_TOKEN_MESSAGE);
         }
 
         String value = fieldNode.asText();
         if (value == null || value.isBlank()) {
-            throw unauthorizedException("[GoogleTokenInfoVerifier#getRequiredText] field is blank: " + fieldName);
+            throw new ServiceException(
+                    CommonErrorCode.UNAUTHORIZED,
+                    "[GoogleTokenInfoVerifier#getRequiredText] field is blank: " + fieldName,
+                    INVALID_GOOGLE_TOKEN_MESSAGE);
         }
 
         return value;
@@ -126,9 +144,5 @@ public class GoogleTokenInfoVerifier implements GoogleIdTokenVerifier {
         }
 
         return "true".equalsIgnoreCase(emailVerifiedNode.asText());
-    }
-
-    private ServiceException unauthorizedException(String logMessage) {
-        return new ServiceException(CommonErrorCode.UNAUTHORIZED, logMessage, INVALID_GOOGLE_TOKEN_MESSAGE);
     }
 }

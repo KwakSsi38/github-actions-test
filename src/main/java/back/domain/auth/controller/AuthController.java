@@ -14,8 +14,6 @@ import back.domain.auth.dto.request.RefreshAuthTokenRequest;
 import back.domain.auth.dto.response.GoogleLoginResponse;
 import back.domain.auth.dto.response.RefreshAuthTokenResponse;
 import back.domain.auth.service.AuthService;
-import back.domain.auth.service.GoogleLoginResult;
-import back.domain.auth.service.AuthTokenResult;
 import back.global.exception.CommonErrorCode;
 import back.global.exception.ServiceException;
 import back.global.response.RsData;
@@ -32,25 +30,13 @@ public class AuthController {
 
     @PostMapping("/google/login")
     public ResponseEntity<RsData<GoogleLoginResponse>> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
-        GoogleLoginResult loginResult = authService.loginWithGoogle(request.idToken());
-        GoogleLoginResponse response = new GoogleLoginResponse(
-                loginResult.memberId(),
-                loginResult.name(),
-                loginResult.email(),
-                loginResult.role(),
-                loginResult.accessToken(),
-                loginResult.refreshToken());
-
-        return ResponseEntity.ok(new RsData<>(response, "로그인 성공"));
+        return ResponseEntity.ok(new RsData<>(authService.loginWithGoogle(request.idToken()), "로그인 성공"));
     }
 
     @PostMapping("/token/refresh")
     public ResponseEntity<RsData<RefreshAuthTokenResponse>> refresh(
             @Valid @RequestBody RefreshAuthTokenRequest request) {
-        AuthTokenResult authTokenResult = authService.refresh(request.refreshToken());
-        RefreshAuthTokenResponse response =
-                new RefreshAuthTokenResponse(authTokenResult.accessToken(), authTokenResult.refreshToken());
-        return ResponseEntity.ok(new RsData<>(response, "토큰 재발급 성공"));
+        return ResponseEntity.ok(new RsData<>(authService.refresh(request.refreshToken()), "토큰 재발급 성공"));
     }
 
     @PostMapping("/logout")
