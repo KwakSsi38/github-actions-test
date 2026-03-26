@@ -51,29 +51,30 @@ public class SkillNormalizeServiceImpl implements SkillNormalizeService {
                     return existing;
                 })
                 .orElseGet(() -> repositoryRepository.save(
-                        Repository.builder()
-                                .githubId(data.getGithubId())
-                                .name(data.getName())
-                                .sourceRepo(data.getSourceRepo())
-                                .sourceUri(data.getSourceUrl())
-                                .summary(data.getSummary())
-                                .tagsJson(extractTagsByRule(repoItem))
-                                .starCount(data.getStarCount())
-                                .forkCount(data.getForkCount())
-                                .size(data.getSize())
-                                .license(data.getLicense())
-                                .languageStats(data.getLanguageStats())
-                                .homepage(data.getHomepage())
-                                .ownerAvatarUrl(data.getOwnerAvatarUrl())
-                                .ownerType(data.getOwnerType() != null
-                                        ? OwnerType.valueOf(data.getOwnerType().toUpperCase()) : null)
-                                .isOfficial(data.getIsOfficial())
-                                .defaultBranch(data.getDefaultBranch())
-                                .etag(data.getEtag())
-                                .sourceUpdatedAt(data.getSourceUpdatedAt())
-                                .active(data.getActive())
-                                .rawMetadata(data.getRawMetadata() != null ? data.getRawMetadata() : null)
-                                .build()
+                        Repository.create(
+                                data.getGithubId(),
+                                data.getName(),
+                                data.getSourceRepo(),
+                                data.getSourceUrl(),
+                                data.getSummary(),
+                                extractTagsByRule(repoItem),
+                                data.getStarCount(),
+                                data.getForkCount(),
+                                data.getSize(),
+                                data.getLanguageStats(),
+                                data.getLicense(),
+                                data.getHomepage(),
+                                data.getOwnerAvatarUrl(),
+                                data.getOwnerType() != null
+                                        ? OwnerType.valueOf(data.getOwnerType().toUpperCase())
+                                        : null,
+                                data.getIsOfficial(),
+                                data.getDefaultBranch(),
+                                data.getEtag(),
+                                data.getSourceUpdatedAt(),
+                                data.getActive(),
+                                data.getRawMetadata()
+                        )
                 ));
     }
 
@@ -92,13 +93,13 @@ public class SkillNormalizeServiceImpl implements SkillNormalizeService {
                     return existing;
                 })
                 .orElseGet(() -> skillRepository.save(
-                        Skill.builder()
-                                .repository(repository)
-                                .name(name)
-                                .contentMd(rawContent)
-                                .contentHash(skillData.getContentHash())
-                                .filePath(skillData.getFilePath())
-                                .build()
+                        Skill.create(
+                                repository,
+                                name,
+                                rawContent,
+                                skillData.getContentHash(),
+                                skillData.getFilePath()
+                        )
                 ));
     }
 
@@ -116,12 +117,12 @@ public class SkillNormalizeServiceImpl implements SkillNormalizeService {
                     return existing;
                 })
                 .orElseGet(() -> agentRepository.save(
-                        Agent.builder()
-                                .repository(repository)
-                                .contentMd(rawContent)
-                                .contentHash(agentData.getContentHash())
-                                .filePath(agentData.getFilePath())
-                                .build()
+                        Agent.create(
+                                repository,
+                                rawContent,
+                                agentData.getContentHash(),
+                                agentData.getFilePath()
+                        )
                 ));
     }
 
