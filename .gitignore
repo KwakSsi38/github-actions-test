@@ -40,3 +40,5 @@ out/
 **/*.md
 !/README.md
 !/Readme.md
+
+.env
