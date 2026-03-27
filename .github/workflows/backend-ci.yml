@@ -15,6 +15,21 @@ jobs:
   quality-gate:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -29,8 +44,13 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run Quality Gate (Checkstyle, Spotbugs, Test, JaCoCo)
+      - name: Run Quality Gate and Test
         run: ./gradlew checkstyleMain spotbugsMain test jacocoTestReport jacocoTestCoverageVerification
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/testdb
+          DB_USERNAME: postgres
+          DB_PASSWORD: password
+          CUSTOM_JWT_SECRET_KEY: "start-ai-hub-default-secret-key-for-testing-purposes-only"
 
       - name: Publish Unit Test Results
         if: always()
@@ -47,3 +67,4 @@ jobs:
         with:
           name: test-reports
           path: build/reports/
+
