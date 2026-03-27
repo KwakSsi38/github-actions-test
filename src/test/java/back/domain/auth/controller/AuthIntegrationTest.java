@@ -14,24 +14,29 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import back.domain.auth.port.GoogleIdTokenVerifier;
 import back.domain.auth.entity.RefreshToken;
 import back.domain.auth.repository.RefreshTokenRepository;
 import back.domain.member.entity.Member;
 import back.domain.member.entity.MemberRole;
 import back.domain.member.repository.MemberRepository;
+import back.global.exception.CommonErrorCode;
+import back.global.exception.ServiceException;
 import back.global.security.JwtTokenProvider;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-@SpringBootTest
+@SpringBootTest(properties = "ADMIN_ALLOWLIST_EMAILS=admin-login@example.com")
 @AutoConfigureMockMvc
 @Transactional
 @Import(AuthIntegrationTest.TestControllerConfig.class)
@@ -51,6 +56,72 @@ class AuthIntegrationTest {
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
+
+    @Test
+    @DisplayName("구글 로그인 신규 회원이면 회원 생성 후 내부 토큰을 발급한다")
+    void googleLogin_newMember_success() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/google/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "idToken": "google-id-token-user-301"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("로그인 성공"))
+                .andExpect(jsonPath("$.data.memberId").isNumber())
+                .andExpect(jsonPath("$.data.email").value("user301@example.com"))
+                .andExpect(jsonPath("$.data.role").value("USER"))
+                .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty());
+
+        Member savedMember = memberRepository.findByGoogleSub("google-sub-301").orElseThrow();
+        assertThat(savedMember.getEmail()).isEqualTo("user301@example.com");
+        assertThat(savedMember.getName()).isEqualTo("User 301");
+        assertThat(savedMember.getRole()).isEqualTo(MemberRole.USER);
+        assertThat(refreshTokenRepository.findByMemberId(savedMember.getId())).isPresent();
+    }
+
+    @Test
+    @DisplayName("구글 로그인 이메일이 allowlist에 포함되면 ADMIN으로 승격된다")
+    void googleLogin_adminAllowlistPromote() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/google/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "idToken": "google-id-token-admin-302"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("로그인 성공"))
+                .andExpect(jsonPath("$.data.role").value("ADMIN"));
+
+        Member savedMember = memberRepository.findByGoogleSub("google-sub-302").orElseThrow();
+        assertThat(savedMember.getRole()).isEqualTo(MemberRole.ADMIN);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @DisplayName("구글 로그인 재시도 시 동일 sub 회원은 이름/이메일을 최신값으로 갱신한다")
+    void googleLogin_existingMemberUpdateProfile() throws Exception {
+        memberRepository.save(Member.createUser("google-sub-303", "old303@example.com", "Old 303"));
+
+        mockMvc.perform(post("/api/v1/auth/google/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "idToken": "google-id-token-update-303"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("로그인 성공"))
+                .andExpect(jsonPath("$.data.email").value("new303@example.com"))
+                .andExpect(jsonPath("$.data.name").value("New 303"));
+
+        Member updatedMember = memberRepository.findByGoogleSub("google-sub-303").orElseThrow();
+        assertThat(updatedMember.getEmail()).isEqualTo("new303@example.com");
+        assertThat(updatedMember.getName()).isEqualTo("New 303");
+    }
 
     @Test
     @DisplayName("유효한 refresh 토큰이면 재발급 성공 후 기존 refresh 재사용은 실패한다")
@@ -192,6 +263,24 @@ class AuthIntegrationTest {
         @Bean
         AdminProbeController adminProbeController() {
             return new AdminProbeController();
+        }
+
+        @Bean
+        @Primary
+        GoogleIdTokenVerifier googleIdTokenVerifier() {
+            return idToken -> switch (idToken) {
+                case "google-id-token-user-301" ->
+                    new GoogleIdTokenVerifier.GoogleUserInfo("google-sub-301", "user301@example.com", "User 301");
+                case "google-id-token-admin-302" ->
+                    new GoogleIdTokenVerifier.GoogleUserInfo(
+                            "google-sub-302", "admin-login@example.com", "Admin 302");
+                case "google-id-token-update-303" ->
+                    new GoogleIdTokenVerifier.GoogleUserInfo("google-sub-303", "new303@example.com", "New 303");
+                default -> throw new ServiceException(
+                        CommonErrorCode.UNAUTHORIZED,
+                        "[AuthIntegrationTest#googleIdTokenVerifier] unsupported idToken",
+                        "유효하지 않은 구글 토큰입니다.");
+            };
         }
     }
 

@@ -43,6 +43,10 @@ custom:
     secret-key: ${CUSTOM_JWT_SECRET_KEY:start-ai-hub-default-secret-key-start-ai-hub-default}
     access-token-expiration-seconds: ${CUSTOM_JWT_ACCESS_EXPIRATION_SECONDS:1800}
     refresh-token-expiration-seconds: ${CUSTOM_JWT_REFRESH_EXPIRATION_SECONDS:1209600}
+  oauth:
+    google:
+      client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+      token-info-base-url: ${GOOGLE_TOKEN_INFO_BASE_URL:https://oauth2.googleapis.com}
   cors:
     allowed-origin-patterns:
       - http://localhost:3000

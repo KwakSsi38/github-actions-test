@@ -63,6 +63,13 @@ dependencies {
     testImplementation("org.springframework.restdocs:spring-restdocs-mockmvc")
     runtimeOnly("org.postgresql:postgresql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // JDBC
+    implementation("org.springframework.boot:spring-boot-starter-jdbc")
+    // PostgreSQL
+    runtimeOnly("org.postgresql:postgresql")
+    // pgvector
+    implementation("com.pgvector:pgvector:0.1.6")
 }
 
 tasks.withType<Test> {
