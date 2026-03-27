@@ -3,6 +3,8 @@ package back.domain.auth.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,8 +15,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import back.domain.auth.port.GoogleIdTokenVerifier;
 import back.domain.auth.dto.response.GoogleLoginResponse;
@@ -42,16 +48,21 @@ class AuthServiceTest {
     @Mock
     private GoogleIdTokenVerifier googleIdTokenVerifier;
 
+    @Mock
+    private TransactionTemplate transactionTemplate;
+
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthServiceImpl(jwtTokenProvider, memberRepository, refreshTokenRepository, googleIdTokenVerifier);
+        authService = new AuthServiceImpl(
+                jwtTokenProvider, memberRepository, refreshTokenRepository, googleIdTokenVerifier, transactionTemplate);
     }
 
     @Test
     @DisplayName("구글 로그인 신규 회원이면 회원을 생성하고 access/refresh를 발급한다")
     void loginWithGoogle_newMember_success() {
+        stubTransactionTemplateExecute();
         when(googleIdTokenVerifier.verify("google-id-token"))
                 .thenReturn(new GoogleIdTokenVerifier.GoogleUserInfo("google-sub-500", "new@example.com", "New User"));
         when(memberRepository.findByGoogleSub("google-sub-500")).thenReturn(Optional.empty());
@@ -72,11 +83,15 @@ class AuthServiceTest {
         assertThat(result.role()).isEqualTo("USER");
         assertThat(result.accessToken()).isEqualTo("issued-access");
         assertThat(result.refreshToken()).isEqualTo("issued-refresh");
+        InOrder orderedCalls = inOrder(googleIdTokenVerifier, transactionTemplate);
+        orderedCalls.verify(googleIdTokenVerifier).verify("google-id-token");
+        orderedCalls.verify(transactionTemplate).execute(any());
     }
 
     @Test
     @DisplayName("구글 로그인 신규 회원 생성 시 이메일이 이미 다른 사용자에 매핑되어 있으면 409 예외를 던진다")
     void loginWithGoogle_whenEmailConflict() {
+        stubTransactionTemplateExecute();
         Member otherMember = createMember(100L, "dup@example.com");
         when(googleIdTokenVerifier.verify("google-id-token"))
                 .thenReturn(new GoogleIdTokenVerifier.GoogleUserInfo("google-sub-777", "dup@example.com", "Dup User"));
@@ -183,5 +198,13 @@ class AuthServiceTest {
         Member member = Member.createUser("google-sub-%d".formatted(memberId), email, "User %d".formatted(memberId));
         ReflectionTestUtils.setField(member, "id", memberId);
         return member;
+    }
+
+    private void stubTransactionTemplateExecute() {
+        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
+            @SuppressWarnings("unchecked")
+            TransactionCallback<Object> callback = invocation.getArgument(0);
+            return callback.doInTransaction(mock(TransactionStatus.class));
+        });
     }
 }

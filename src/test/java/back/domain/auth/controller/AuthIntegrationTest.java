@@ -19,6 +19,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -100,6 +101,7 @@ class AuthIntegrationTest {
     }
 
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     @DisplayName("구글 로그인 재시도 시 동일 sub 회원은 이름/이메일을 최신값으로 갱신한다")
     void googleLogin_existingMemberUpdateProfile() throws Exception {
         memberRepository.save(Member.createUser("google-sub-303", "old303@example.com", "Old 303"));

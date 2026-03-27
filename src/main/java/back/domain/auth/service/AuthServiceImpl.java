@@ -5,7 +5,9 @@ import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
@@ -37,23 +39,16 @@ public class AuthServiceImpl implements AuthService {
     private final MemberRepository memberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
+    private final TransactionTemplate transactionTemplate;
 
     @Value("${ADMIN_ALLOWLIST_EMAILS:}")
     private String adminAllowlistEmails;
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public GoogleLoginResponse loginWithGoogle(String idToken) {
         GoogleIdTokenVerifier.GoogleUserInfo googleUserInfo = googleIdTokenVerifier.verify(idToken);
-        Member member = upsertMember(googleUserInfo.googleSub(), googleUserInfo.email(), googleUserInfo.name());
-        String role = member.getRole().name();
-
-        String accessToken = jwtTokenProvider.generateAccessToken(member.getId(), member.getEmail(), role);
-        String refreshToken = jwtTokenProvider.generateRefreshToken(member.getId(), member.getEmail(), role);
-        saveOrRotateRefreshToken(member.getId(), refreshToken);
-
-        return new GoogleLoginResponse(
-                member.getId(), member.getName(), member.getEmail(), role, accessToken, refreshToken);
+        return transactionTemplate.execute(status -> loginWithVerifiedGoogleUser(googleUserInfo));
     }
 
     @Override
@@ -98,6 +93,18 @@ public class AuthServiceImpl implements AuthService {
                 .findByGoogleSub(googleSub)
                 .map(existingMember -> updateExistingMember(existingMember, email, name))
                 .orElseGet(() -> createNewMember(googleSub, email, name));
+    }
+
+    private GoogleLoginResponse loginWithVerifiedGoogleUser(GoogleIdTokenVerifier.GoogleUserInfo googleUserInfo) {
+        Member member = upsertMember(googleUserInfo.googleSub(), googleUserInfo.email(), googleUserInfo.name());
+        String role = member.getRole().name();
+
+        String accessToken = jwtTokenProvider.generateAccessToken(member.getId(), member.getEmail(), role);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(member.getId(), member.getEmail(), role);
+        saveOrRotateRefreshToken(member.getId(), refreshToken);
+
+        return new GoogleLoginResponse(
+                member.getId(), member.getName(), member.getEmail(), role, accessToken, refreshToken);
     }
 
     private Member updateExistingMember(Member existingMember, String email, String name) {
