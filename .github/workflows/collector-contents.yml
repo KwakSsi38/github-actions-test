@@ -32,6 +32,18 @@ jobs:
           echo "${{ secrets.OCI_KEY }}"    > ~/.oci/key.pem
           chmod 600 ~/.oci/config ~/.oci/key.pem
 
+      - name: Debug paths
+        run: |
+          echo "현재 디렉토리: $(pwd)"
+          echo "파일 목록:"
+          ls -la
+          echo "collectors 존재 여부:"
+          ls collectors/ 2>/dev/null || echo "collectors 폴더 없음"
+          echo "__init__.py 확인:"
+          find . -name "__init__.py" | head -20
+          echo "Python 경로:"
+          python -c "import sys; print('\n'.join(sys.path))"
+
       - name: Run contents scheduler
         env:
           GITHUB_TOKEN_1:       ${{ secrets.GH_TOKEN_1 }}
