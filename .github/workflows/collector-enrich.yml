@@ -10,7 +10,7 @@ on:
     inputs:
       is_monday_midnight:
         description: 'Sourcegraph 수집 포함 여부'
-        type: boolean
+        required: false
         default: 'false'
 
 jobs:
@@ -28,13 +28,6 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r collectors/scripts/prompts/requirements.txt
-
-      - name: Create package init files
-        run: |
-          touch collectors/__init__.py
-          touch collectors/scripts/__init__.py
-          touch collectors/scripts/shared/__init__.py
-          touch collectors/scripts/prompts/__init__.py
 
       - name: Write OCI config
         run: |
