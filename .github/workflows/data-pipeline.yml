@@ -1,33 +1,46 @@
-name: Collector — Enrich (Monday)
+name: AI Model Data Pipeline
 
 on:
   schedule:
-    - cron: '0 0 * * 1'
-    - cron: '0 6 * * 1'
-    - cron: '0 12 * * 1'
-    - cron: '0 18 * * 1'
+    - cron: "0 0 * * *"   # 매일 오전 9시 KST (00:00 UTC)
   workflow_dispatch:
     inputs:
-      is_monday_midnight:
-        description: 'Sourcegraph 수집 포함 여부'
+      start_from:
+        description: "재실행 시작 단계"
         required: false
-        default: 'false'
+        default: "fetch_or_models"
+        type: choice
+        options:
+          - fetch_or_models
+          - fetch_aa_benchmark
+          - upload_to_oci
+          - webhook_trigger
+
+env:
+  PYTHON_VERSION: "3.11"
+  SCRIPTS_PATH:   "collectors/scripts/ai_info"
 
 jobs:
-  enrich:
+  pipeline:
+    name: Run AI Model Data Pipeline
     runs-on: ubuntu-latest
-    timeout-minutes: 340
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: ${{ github.workspace }}
 
     steps:
-      - uses: actions/checkout@v4
+      # ── 환경 세팅 ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
 
       - name: Install dependencies
-        run: pip install -r collectors/scripts/prompts/requirements.txt
+        run: pip install -r ${{ env.SCRIPTS_PATH }}/requirements.txt
 
       - name: Write OCI config
         run: |
@@ -36,20 +49,50 @@ jobs:
           echo "${{ secrets.OCI_KEY }}"    > ~/.oci/key.pem
           chmod 600 ~/.oci/config ~/.oci/key.pem
 
-      - name: Run enrich scheduler
-        env:
-          PYTHONPATH:           ${{ github.workspace }}
-          SOURCEGRAPH_TOKEN:    ${{ secrets.SOURCEGRAPH_TOKEN }}
-          GITHUB_TOKEN_1:       ${{ secrets.GH_TOKEN_1 }}
-          GITHUB_TOKEN_2:       ${{ secrets.GH_TOKEN_2 }}
-          OCI_NAMESPACE:        ${{ secrets.OCI_NAMESPACE }}
-          OCI_BUCKET:           ${{ secrets.OCI_BUCKET }}
-          DISCORD_WEBHOOK_URL:  ${{ secrets.DISCORD_WEBHOOK_URL }}
-          FAIL_ALERT_THRESHOLD: "50"
-          SKIP_FORKS:           "true"
-          IS_MONDAY_MIDNIGHT: ${{ github.event.schedule == '0 0 * * 1' && 'true' || inputs.is_monday_midnight || 'false' }}
-        run: python -m collectors.scripts.prompts.main_enrich
+      # ── 파이프라인 실행 ──────────────────────────────────────────────────
+      - name: "1. Fetch OpenRouter Models"
+        if: |
+          github.event_name == 'schedule' ||
+          contains(fromJSON('["fetch_or_models"]'), github.event.inputs.start_from)
+        run: python -m collectors.scripts.ai_info.fetch_or_models
 
+      - name: "2. Fetch Artificial Analysis Benchmark"
+        if: |
+          github.event_name == 'schedule' ||
+          contains(fromJSON('["fetch_or_models","fetch_aa_benchmark"]'), github.event.inputs.start_from)
+        env:
+          ARTIFICIAL_ANALYSIS_API_KEY: ${{ secrets.ARTIFICIAL_ANALYSIS_API_KEY }}
+        run: python -m collectors.scripts.ai_info.fetch_aa_benchmark
+
+      - name: "3. Upload Raw Data to OCI"
+        env:
+          OCI_NAMESPACE:       ${{ secrets.OCI_NAMESPACE }}
+          OCI_BUCKET:          ${{ secrets.OCI_BUCKET }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python -m collectors.scripts.ai_info.upload_to_oci
+
+      - name: "4. Trigger Spring Pipeline"
+        if: |
+          github.event_name == 'schedule' ||
+          contains(fromJSON('["fetch_or_models","fetch_aa_benchmark","upload_to_oci","webhook_trigger"]'), github.event.inputs.start_from)
+        env:
+          SPRING_WEBHOOK_URL:    ${{ secrets.SPRING_WEBHOOK_URL }}
+          SPRING_WEBHOOK_SECRET: ${{ secrets.SPRING_WEBHOOK_SECRET }}
+        run: python -m collectors.scripts.ai_info.webhook_trigger
+
+      # ── 정리 ─────────────────────────────────────────────────────────────
       - name: Cleanup OCI credentials
         if: always()
         run: rm -f ~/.oci/config ~/.oci/key.pem
+
+      # ── 실패 알림 ─────────────────────────────────────────────────────────
+      - name: Notify on failure (Discord)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python -c "
+          from collectors.scripts.ai_info.notify import notify_failure
+          run_url = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          notify_failure('pipeline', Exception(f'워크플로우 실패: {run_url}'))
+          "
