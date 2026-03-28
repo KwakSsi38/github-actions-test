@@ -14,7 +14,7 @@ import sys
 
 from collectors.scripts.ai_info.config import ARTIFICIAL_ANALYSIS_URL, RANKINGS_DIR
 from collectors.scripts.ai_info.http_client import fetch_json
-from collectors.scripts.ai_info.utils import save_json, setup_logging
+from collectors.scripts.shared.utils import save_json, setup_logging
 
 logger = logging.getLogger(__name__)
 
