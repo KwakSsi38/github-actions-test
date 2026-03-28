@@ -21,7 +21,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
-  SCRIPTS_PATH:   "collectors/scripts/ai-info"
+  SCRIPTS_PATH: "collectors/scripts/ai_info"
 
 jobs:
   pipeline:
