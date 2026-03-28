@@ -1,0 +1,119 @@
+name: AI Model Data Pipeline
+
+on:
+  schedule:
+    - cron: "0 0 * * *"   # 매일 오전 9시 KST (00:00 UTC)
+  workflow_dispatch:
+    inputs:
+      start_from:
+        description: "재실행 시작 단계"
+        required: false
+        default: "fetch_or_models"
+        type: choice
+        options:
+          - fetch_or_models
+          - filter_models
+          - fetch_aa_benchmark
+          - merge_model_info
+          - extract_benchmark_records
+          - calc_benchmark_stats
+          - upload_to_oci
+
+env:
+  PYTHON_VERSION: "3.11"
+  SCRIPTS_PATH:   "collectors/scripts/ai-info"
+
+jobs:
+  pipeline:
+    name: Run AI Model Data Pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ── 환경 세팅 ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r ${{ env.SCRIPTS_PATH }}/requirements.txt
+
+      - name: Write OCI config
+        run: |
+          mkdir -p ~/.oci
+          echo "${{ secrets.OCI_CONFIG }}" > ~/.oci/config
+          echo "${{ secrets.OCI_KEY }}"    > ~/.oci/key.pem
+          chmod 600 ~/.oci/config ~/.oci/key.pem
+
+      # ── 파이프라인 실행 ──────────────────────────────────────────────────
+      # start_from 이후 단계만 실행. 스케줄 실행은 항상 처음부터 전체 실행.
+
+      - name: "1. Fetch OpenRouter Models"
+        if: |
+          github.event_name == 'schedule' ||
+          contains(fromJSON('["fetch_or_models"]'), github.event.inputs.start_from)
+        run: python -m collectors.scripts.ai_info.fetch_or_models
+
+      - name: "2. Filter Major Vendor Models"
+        if: |
+          github.event_name == 'schedule' ||
+          contains(fromJSON('["fetch_or_models","filter_models"]'), github.event.inputs.start_from)
+        run: python -m collectors.scripts.ai_info.filter_models
+
+      - name: "3. Fetch Artificial Analysis Benchmark"
+        if: |
+          github.event_name == 'schedule' ||
+          contains(fromJSON('["fetch_or_models","filter_models","fetch_aa_benchmark"]'), github.event.inputs.start_from)
+        env:
+          ARTIFICIAL_ANALYSIS_API_KEY: ${{ secrets.ARTIFICIAL_ANALYSIS_API_KEY }}
+        run: python -m collectors.scripts.ai_info.fetch_aa_benchmark
+
+      - name: "4. Merge Model Info & Benchmark"
+        if: |
+          github.event_name == 'schedule' ||
+          contains(fromJSON('["fetch_or_models","filter_models","fetch_aa_benchmark","merge_model_info"]'), github.event.inputs.start_from)
+        run: python -m collectors.scripts.ai_info.merge_model_info
+
+      - name: "5. Extract Benchmark Records"
+        if: |
+          github.event_name == 'schedule' ||
+          contains(fromJSON('["fetch_or_models","filter_models","fetch_aa_benchmark","merge_model_info","extract_benchmark_records"]'), github.event.inputs.start_from)
+        run: python -m collectors.scripts.ai_info.extract_benchmark_records
+
+      - name: "6. Calculate Benchmark Stats"
+        if: |
+          github.event_name == 'schedule' ||
+          contains(fromJSON('["fetch_or_models","filter_models","fetch_aa_benchmark","merge_model_info","extract_benchmark_records","calc_benchmark_stats"]'), github.event.inputs.start_from)
+        run: python -m collectors.scripts.ai_info.calc_benchmark_stats
+
+      - name: "7. Upload to OCI Object Storage"
+        env:
+          OCI_NAMESPACE:       ${{ secrets.OCI_NAMESPACE }}
+          OCI_BUCKET:          ${{ secrets.OCI_BUCKET }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python -m collectors.scripts.ai_info.upload_to_oci
+
+      # ── 정리 ─────────────────────────────────────────────────────────────
+      - name: Cleanup OCI credentials
+        if: always()
+        run: rm -f ~/.oci/config ~/.oci/key.pem
+
+      # ── 실패 알림 ─────────────────────────────────────────────────────────
+      - name: Notify on failure (GitHub Issue)
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run_url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner:  context.repo.owner,
+              repo:   context.repo.repo,
+              title:  `[AI Pipeline 실패] ${new Date().toISOString().slice(0, 10)}`,
+              body:   `AI 모델 데이터 수집 파이프라인이 실패했습니다.\n\n🔗 [실패한 워크플로우 보기](${run_url})`,
+              labels: ["bug", "pipeline"],
+            });

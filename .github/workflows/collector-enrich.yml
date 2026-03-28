@@ -1,0 +1,57 @@
+name: Weekly Enrich (Monday)
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'    # 월요일 00시 (UTC)
+    - cron: '0 6 * * 1'    # 월요일 06시
+    - cron: '0 12 * * 1'   # 월요일 12시
+    - cron: '0 18 * * 1'   # 월요일 18시
+  workflow_dispatch:
+    inputs:
+      is_monday_midnight:
+        description: 'Sourcegraph 수집 포함 여부'
+        type: boolean
+        default: 'false'
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r collectors/scripts/prompts/requirements.txt
+
+      - name: Write OCI config
+        run: |
+          mkdir -p ~/.oci
+          echo "${{ secrets.OCI_CONFIG }}" > ~/.oci/config
+          echo "${{ secrets.OCI_KEY }}"    > ~/.oci/key.pem
+          chmod 600 ~/.oci/config ~/.oci/key.pem
+
+      - name: Run enrich scheduler
+        env:
+          SOURCEGRAPH_TOKEN:    ${{ secrets.SOURCEGRAPH_TOKEN }}
+          GITHUB_TOKEN_1:       ${{ secrets.GH_TOKEN_1 }}
+          GITHUB_TOKEN_2:       ${{ secrets.GH_TOKEN_2 }}
+          OCI_NAMESPACE:        ${{ secrets.OCI_NAMESPACE }}
+          OCI_BUCKET:           ${{ secrets.OCI_BUCKET }}
+          DISCORD_WEBHOOK_URL:  ${{ secrets.DISCORD_WEBHOOK_URL }}
+          FAIL_ALERT_THRESHOLD: "50"
+          SKIP_FORKS:           "true"
+          # 0시 실행만 Sourcegraph 수집 포함
+          # IS_MONDAY_MIDNIGHT: ${{ github.event.schedule == '0 0 * * 1' && 'true' || inputs.is_monday_midnight || 'false' }}
+          IS_MONDAY_MIDNIGHT: true
+        run: python collectors/scripts/prompts/main_enrich.py
+
+      - name: Cleanup OCI credentials
+        if: always()
+        run: rm -f ~/.oci/config ~/.oci/key.pem
