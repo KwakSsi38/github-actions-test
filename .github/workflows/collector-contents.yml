@@ -1,11 +1,11 @@
-name: Daily Contents (Tue-Sat)
+name: Collector — Contents (Tue-Sat)
 
 on:
   schedule:
-    - cron: '0 0 * * 2-6'   # 화~토 00시 (UTC)
-    - cron: '0 6 * * 2-6'   # 화~토 06시
-    - cron: '0 12 * * 2-6'  # 화~토 12시
-    - cron: '0 18 * * 2-6'  # 화~토 18시
+    - cron: '0 0 * * 2-6'
+    - cron: '0 6 * * 2-6'
+    - cron: '0 12 * * 2-6'
+    - cron: '0 18 * * 2-6'
   workflow_dispatch:
 
 jobs:
@@ -14,16 +14,22 @@ jobs:
     timeout-minutes: 340
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: pip install -r collectors/scripts/prompts/requirements.txt
+
+      - name: Create package init files
+        run: |
+          touch collectors/__init__.py
+          touch collectors/scripts/__init__.py
+          touch collectors/scripts/shared/__init__.py
+          touch collectors/scripts/prompts/__init__.py
 
       - name: Write OCI config
         run: |
@@ -32,27 +38,16 @@ jobs:
           echo "${{ secrets.OCI_KEY }}"    > ~/.oci/key.pem
           chmod 600 ~/.oci/config ~/.oci/key.pem
 
-      - name: Debug paths
-        run: |
-          echo "현재 디렉토리: $(pwd)"
-          echo "파일 목록:"
-          ls -la
-          echo "collectors 존재 여부:"
-          ls collectors/ 2>/dev/null || echo "collectors 폴더 없음"
-          echo "__init__.py 확인:"
-          find . -name "__init__.py" | head -20
-          echo "Python 경로:"
-          python -c "import sys; print('\n'.join(sys.path))"
-
       - name: Run contents scheduler
         env:
+          PYTHONPATH:           ${{ github.workspace }}
           GITHUB_TOKEN_1:       ${{ secrets.GH_TOKEN_1 }}
           GITHUB_TOKEN_2:       ${{ secrets.GH_TOKEN_2 }}
           OCI_NAMESPACE:        ${{ secrets.OCI_NAMESPACE }}
           OCI_BUCKET:           ${{ secrets.OCI_BUCKET }}
           DISCORD_WEBHOOK_URL:  ${{ secrets.DISCORD_WEBHOOK_URL }}
           FAIL_ALERT_THRESHOLD: "50"
-        run: python collectors/scripts/prompts/main_contents.py
+        run: python -m collectors.scripts.prompts.main_contents
 
       - name: Cleanup OCI credentials
         if: always()

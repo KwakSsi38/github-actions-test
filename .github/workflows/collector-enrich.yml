@@ -45,6 +45,7 @@ jobs:
 
       - name: Run enrich scheduler
         env:
+          PYTHONPATH:           ${{ github.workspace }}
           SOURCEGRAPH_TOKEN:    ${{ secrets.SOURCEGRAPH_TOKEN }}
           GITHUB_TOKEN_1:       ${{ secrets.GH_TOKEN_1 }}
           GITHUB_TOKEN_2:       ${{ secrets.GH_TOKEN_2 }}

@@ -25,6 +25,8 @@ jobs:
     name: Run AI Model Data Pipeline
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      PYTHONPATH: ${{ github.workspace }}
 
     steps:
       # ── 환경 세팅 ────────────────────────────────────────────────────────
