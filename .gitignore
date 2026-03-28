@@ -36,13 +36,18 @@ out/
 ### VS Code ###
 .vscode/
 
-### Environment ###
-.env
-!.env.example
-
 ### Markdown ###
 **/*.md
 !/README.md
 !/Readme.md
 
 .env
+
+### JSON ###
+collectors/data
+
+### Python ###
+collectors/venv/
+collectors/.env
+collectors/__pycache__/
+collectors/**/*.pyc
