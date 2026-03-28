@@ -22,7 +22,7 @@ OUTPUT_FILE = RANKINGS_DIR / "models_benchmark_raw.json"
 
 
 def get_api_key() -> str:
-    key = os.getenv("ARTIFICIAL_ANALYSIS_API_KEY")
+    key = "aa_kRNWYWxAffkERoLpRtfbMjfKJIMUiGKx"
     if not key:
         logger.error(
             "ARTIFICIAL_ANALYSIS_API_KEY 환경변수가 설정되지 않았습니다. "

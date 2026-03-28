@@ -1,11 +1,11 @@
 """
-upload_to_oci.py — 결과물 OCI Object Storage 업로드
+upload_to_oci.py — raw 데이터 OCI Object Storage 업로드
 
-업로드 대상 (config.OCI_UPLOAD_TARGETS):
-  - data/ai-info/integrated_major_models.json
-  - data/ai-info/model_benchmarks_records.json
-  - data/ai-info/category_stats.json
+업로드 대상:
+  - data/ai-info/models_info_raw.json
+  - data/ai-info/models_benchmark_raw.json
 
+가공/매칭/통계는 Java(Spring)에서 처리.
 성공/실패 여부를 Discord로 알림.
 """
 
@@ -15,7 +15,7 @@ import sys
 from collectors.scripts.ai_info.config import OCI_UPLOAD_TARGETS
 from collectors.scripts.ai_info.notify import notify_failure, notify_success
 from collectors.scripts.ai_info.oci_manager import OciManager
-from collectors.scripts.ai_info.utils import load_json, setup_logging
+from collectors.scripts.shared.utils import setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +24,9 @@ def main() -> None:
     setup_logging()
     logger.info("OCI 업로드 시작 (대상 %d개)", len(OCI_UPLOAD_TARGETS))
 
-    manager            = OciManager()
-    succeeded: list[str] = []
-    failed: list[str]    = []
+    manager   = OciManager()
+    succeeded = []
+    failed    = []
 
     for local_path, object_name in OCI_UPLOAD_TARGETS:
         if not local_path.exists():
@@ -51,22 +51,7 @@ def main() -> None:
             pass
         sys.exit(1)
 
-    # 통계 요약 수집 (Discord 알림용)
-    try:
-        from collectors.scripts.ai_info.config import AI_INFO_DIR, RANKINGS_DIR
-        integrated = load_json(AI_INFO_DIR / "integrated_major_models.json")
-        records    = load_json(RANKINGS_DIR / "model_benchmarks_records.json")
-        vendor_count = len(integrated) if isinstance(integrated, list) else 0
-        model_count  = sum(
-            len(f.get("models", []))
-            for v in (integrated if isinstance(integrated, list) else [])
-            for f in v.get("families", [])
-        )
-        record_count = len(records) if isinstance(records, list) else 0
-        notify_success(model_count, vendor_count, record_count)
-    except Exception as e:
-        logger.warning("Discord 알림 통계 수집 실패 (무시): %s", e)
-
+    notify_success(len(succeeded))
     logger.info("OCI 업로드 완료 (%d개)", len(succeeded))
 
 

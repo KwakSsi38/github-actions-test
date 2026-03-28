@@ -2,7 +2,6 @@
 fetch_or_models.py — OpenRouter 모델 원본 데이터 수집
 
 OpenRouter API에서 전체 모델 목록을 가져와 raw JSON으로 저장.
-다음 단계(filter_models)에서 이 파일을 읽어 필터링.
 """
 
 import logging

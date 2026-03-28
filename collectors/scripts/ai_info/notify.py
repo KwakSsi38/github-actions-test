@@ -23,17 +23,13 @@ _SENSITIVE_VALUES = [
 ]
 
 
-def notify_success(model_count: int, vendor_count: int, record_count: int) -> None:
+def notify_success(file_count: int) -> None:
     send_embed({
         "embeds": [{
-            "title":  "✅ AI 모델 파이프라인 완료",
-            "color":  0x57F287,
-            "fields": [
-                {"name": "벤더",     "value": str(vendor_count),  "inline": True},
-                {"name": "모델",     "value": str(model_count),   "inline": True},
-                {"name": "벤치마크", "value": str(record_count),  "inline": True},
-            ],
-            "footer": {"text": now_display()},
+            "title":       "✅ AI 모델 raw 데이터 수집 완료",
+            "color":       0x57F287,
+            "description": f"raw 파일 {file_count}개가 OCI에 업로드됐습니다.",
+            "footer":      {"text": now_display()},
         }]
     })
 

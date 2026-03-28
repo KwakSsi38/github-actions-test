@@ -12,16 +12,12 @@ on:
         type: choice
         options:
           - fetch_or_models
-          - filter_models
           - fetch_aa_benchmark
-          - merge_model_info
-          - extract_benchmark_records
-          - calc_benchmark_stats
           - upload_to_oci
 
 env:
   PYTHON_VERSION: "3.11"
-  SCRIPTS_PATH: "collectors/scripts/ai_info"
+  SCRIPTS_PATH:   "collectors/scripts/ai_info"
 
 jobs:
   pipeline:
@@ -51,47 +47,21 @@ jobs:
           chmod 600 ~/.oci/config ~/.oci/key.pem
 
       # ── 파이프라인 실행 ──────────────────────────────────────────────────
-      # start_from 이후 단계만 실행. 스케줄 실행은 항상 처음부터 전체 실행.
-
       - name: "1. Fetch OpenRouter Models"
         if: |
           github.event_name == 'schedule' ||
           contains(fromJSON('["fetch_or_models"]'), github.event.inputs.start_from)
         run: python -m collectors.scripts.ai_info.fetch_or_models
 
-      - name: "2. Filter Major Vendor Models"
+      - name: "2. Fetch Artificial Analysis Benchmark"
         if: |
           github.event_name == 'schedule' ||
-          contains(fromJSON('["fetch_or_models","filter_models"]'), github.event.inputs.start_from)
-        run: python -m collectors.scripts.ai_info.filter_models
-
-      - name: "3. Fetch Artificial Analysis Benchmark"
-        if: |
-          github.event_name == 'schedule' ||
-          contains(fromJSON('["fetch_or_models","filter_models","fetch_aa_benchmark"]'), github.event.inputs.start_from)
+          contains(fromJSON('["fetch_or_models","fetch_aa_benchmark"]'), github.event.inputs.start_from)
         env:
           ARTIFICIAL_ANALYSIS_API_KEY: ${{ secrets.ARTIFICIAL_ANALYSIS_API_KEY }}
         run: python -m collectors.scripts.ai_info.fetch_aa_benchmark
 
-      - name: "4. Merge Model Info & Benchmark"
-        if: |
-          github.event_name == 'schedule' ||
-          contains(fromJSON('["fetch_or_models","filter_models","fetch_aa_benchmark","merge_model_info"]'), github.event.inputs.start_from)
-        run: python -m collectors.scripts.ai_info.merge_model_info
-
-      - name: "5. Extract Benchmark Records"
-        if: |
-          github.event_name == 'schedule' ||
-          contains(fromJSON('["fetch_or_models","filter_models","fetch_aa_benchmark","merge_model_info","extract_benchmark_records"]'), github.event.inputs.start_from)
-        run: python -m collectors.scripts.ai_info.extract_benchmark_records
-
-      - name: "6. Calculate Benchmark Stats"
-        if: |
-          github.event_name == 'schedule' ||
-          contains(fromJSON('["fetch_or_models","filter_models","fetch_aa_benchmark","merge_model_info","extract_benchmark_records","calc_benchmark_stats"]'), github.event.inputs.start_from)
-        run: python -m collectors.scripts.ai_info.calc_benchmark_stats
-
-      - name: "7. Upload to OCI Object Storage"
+      - name: "3. Upload Raw Data to OCI"
         env:
           OCI_NAMESPACE:       ${{ secrets.OCI_NAMESPACE }}
           OCI_BUCKET:          ${{ secrets.OCI_BUCKET }}
