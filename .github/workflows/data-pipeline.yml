@@ -14,6 +14,7 @@ on:
           - fetch_or_models
           - fetch_aa_benchmark
           - upload_to_oci
+          - webhook_trigger
 
 env:
   PYTHON_VERSION: "3.11"
@@ -38,6 +39,13 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r ${{ env.SCRIPTS_PATH }}/requirements.txt
+
+      - name: Create package init files
+        run: |
+          touch collectors/__init__.py
+          touch collectors/scripts/__init__.py
+          touch collectors/scripts/shared/__init__.py
+          touch collectors/scripts/ai_info/__init__.py
 
       - name: Write OCI config
         run: |
@@ -67,6 +75,15 @@ jobs:
           OCI_BUCKET:          ${{ secrets.OCI_BUCKET }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python -m collectors.scripts.ai_info.upload_to_oci
+
+      - name: "4. Trigger Spring Pipeline"
+        if: |
+          github.event_name == 'schedule' ||
+          contains(fromJSON('["fetch_or_models","fetch_aa_benchmark","upload_to_oci","webhook_trigger"]'), github.event.inputs.start_from)
+        env:
+          SPRING_WEBHOOK_URL:    ${{ secrets.SPRING_WEBHOOK_URL }}
+          SPRING_WEBHOOK_SECRET: ${{ secrets.SPRING_WEBHOOK_SECRET }}
+        run: python -m collectors.scripts.ai_info.webhook_trigger
 
       # ── 정리 ─────────────────────────────────────────────────────────────
       - name: Cleanup OCI credentials
