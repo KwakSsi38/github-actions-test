@@ -70,6 +70,15 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
     // pgvector
     implementation("com.pgvector:pgvector:0.1.6")
+
+    // OCI Object Storage
+    implementation("com.oracle.oci.sdk:oci-java-sdk-objectstorage:3.60.0")
+    implementation("com.oracle.oci.sdk:oci-java-sdk-common:3.60.0")
+    implementation("com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey3:3.60.0")
+
+    // Google Gemini SDK
+    implementation("com.google.genai:google-genai:1.44.0")
+
 }
 
 tasks.withType<Test> {

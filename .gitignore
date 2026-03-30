@@ -44,5 +44,6 @@ out/
 **/*.md
 !/README.md
 !/Readme.md
+!/AGENT.md
 
 .env
