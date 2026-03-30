@@ -19,29 +19,30 @@ from collectors.scripts.shared.utils import setup_logging
 
 logger = logging.getLogger(__name__)
 
-WEBHOOK_URL    = os.environ.get("SPRING_WEBHOOK_URL", "")
-WEBHOOK_SECRET = os.environ.get("SPRING_WEBHOOK_SECRET", "")
-TIMEOUT        = 10
+TIMEOUT = 10
 
 
 def main() -> None:
     setup_logging()
 
-    if not WEBHOOK_URL:
+    webhook_url    = os.environ.get("SPRING_WEBHOOK_URL", "")
+    webhook_secret = os.environ.get("SPRING_WEBHOOK_SECRET", "")
+
+    if not webhook_url:
         logger.error("SPRING_WEBHOOK_URL 환경변수가 설정되지 않았습니다.")
         sys.exit(1)
 
-    if not WEBHOOK_SECRET:
+    if not webhook_secret:
         logger.error("SPRING_WEBHOOK_SECRET 환경변수가 설정되지 않았습니다.")
         sys.exit(1)
 
-    logger.info("Webhook 호출: %s", WEBHOOK_URL)
+    logger.info("Webhook 호출: %s", webhook_url)
 
     try:
         with httpx.Client(timeout=TIMEOUT) as client:
             resp = client.post(
-                WEBHOOK_URL,
-                headers={"X-Webhook-Secret": WEBHOOK_SECRET},
+                webhook_url,
+                headers={"X-Webhook-Secret": webhook_secret},
                 json={"event": "raw_data_updated"},
             )
 

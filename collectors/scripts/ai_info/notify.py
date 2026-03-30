@@ -34,5 +34,28 @@ def notify_success(file_count: int) -> None:
     })
 
 
-def notify_failure(step_name: str, exc: Exception) -> None:
-    send_error(f"AI 파이프라인 실패 — {step_name}", exc, _SENSITIVE_VALUES)
+def notify_failure(
+        step_name: str,
+        exc: Exception,
+        succeeded: list[str] | None = None,
+        failed: list[str] | None = None,
+) -> None:
+    """
+    파이프라인 실패 알림.
+
+    Args:
+        step_name: 실패한 단계명 (예: "upload_to_oci")
+        exc:       발생한 예외
+        succeeded: 성공한 파일 목록 (upload_to_oci 단계에서 부분 실패 시 사용)
+        failed:    실패한 파일 목록
+    """
+    detail_lines = []
+    if succeeded:
+        detail_lines.append(f"✓ 성공: {', '.join(succeeded)}")
+    if failed:
+        detail_lines.append(f"✗ 실패: {', '.join(failed)}")
+
+    detail = "\n".join(detail_lines)
+    wrapped = RuntimeError(f"{exc}\n{detail}") if detail else exc
+
+    send_error(f"AI 파이프라인 실패 — {step_name}", wrapped, _SENSITIVE_VALUES)

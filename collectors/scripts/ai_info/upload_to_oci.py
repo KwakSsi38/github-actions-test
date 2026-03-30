@@ -7,6 +7,7 @@ upload_to_oci.py — raw 데이터 OCI Object Storage 업로드
 
 가공/매칭/통계는 Java(Spring)에서 처리.
 성공/실패 여부를 Discord로 알림.
+부분 실패도 전체 실패로 처리 — 일관성 없는 상태로 webhook이 호출되는 것을 방지.
 """
 
 import logging
@@ -46,7 +47,12 @@ def main() -> None:
     if failed:
         logger.error("업로드 실패 파일: %s", failed)
         try:
-            notify_failure("upload_to_oci", RuntimeError(f"업로드 실패: {failed}"))
+            notify_failure(
+                "upload_to_oci",
+                RuntimeError(f"업로드 실패 ({len(failed)}/{len(OCI_UPLOAD_TARGETS)}개)"),
+                succeeded=succeeded,
+                failed=failed,
+            )
         except Exception:
             pass
         sys.exit(1)

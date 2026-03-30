@@ -12,17 +12,17 @@ import logging
 import os
 import sys
 
-from collectors.scripts.ai_info.config import ARTIFICIAL_ANALYSIS_URL, RANKINGS_DIR
+from collectors.scripts.ai_info.config import ARTIFICIAL_ANALYSIS_URL, AI_INFO_DIR
 from collectors.scripts.ai_info.http_client import fetch_json
 from collectors.scripts.shared.utils import save_json, setup_logging
 
 logger = logging.getLogger(__name__)
 
-OUTPUT_FILE = RANKINGS_DIR / "models_benchmark_raw.json"
+OUTPUT_FILE = AI_INFO_DIR / "models_benchmark_raw.json"
 
 
 def get_api_key() -> str:
-    key = "aa_kRNWYWxAffkERoLpRtfbMjfKJIMUiGKx"
+    key = os.environ.get("ARTIFICIAL_ANALYSIS_API_KEY")
     if not key:
         logger.error(
             "ARTIFICIAL_ANALYSIS_API_KEY 환경변수가 설정되지 않았습니다. "
