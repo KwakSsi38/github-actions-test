@@ -1,17 +1,17 @@
 name: Collector — Contents (Tue-Sat)
 
 on:
-  schedule:
-    - cron: '0 0 * * 2-6'
-    - cron: '0 6 * * 2-6'
-    - cron: '0 12 * * 2-6'
-    - cron: '0 18 * * 2-6'
+  # schedule:
+  # - cron: '0 15 * * 1-5' # KST 화-토 00:00
+  # - cron: '0 21 * * 1-5' # KST 화-토 06:00
+  # - cron: '0 3 * * 2-6'  # KST 화-토 12:00
+  # - cron: '0 9 * * 2-6'  # KST 화-토 18:00
   workflow_dispatch:
 
 jobs:
   contents:
     runs-on: ubuntu-latest
-    timeout-minutes: 340
+    timeout-minutes: 360
 
     steps:
       - uses: actions/checkout@v4
