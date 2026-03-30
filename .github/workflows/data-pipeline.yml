@@ -1,8 +1,8 @@
 name: AI Model Data Pipeline
 
 on:
-  schedule:
-    - cron: "0 0 * * *"   # 매일 오전 9시 KST (00:00 UTC)
+  # schedule:
+    # - cron: "0 15 * * *"   # 매일 오전 0시 KST
   workflow_dispatch:
     inputs:
       start_from:
