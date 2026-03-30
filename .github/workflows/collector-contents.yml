@@ -1,0 +1,47 @@
+name: Collector — Contents (Tue-Sat)
+
+on:
+  schedule:
+    - cron: '0 0 * * 2-6'
+    - cron: '0 6 * * 2-6'
+    - cron: '0 12 * * 2-6'
+    - cron: '0 18 * * 2-6'
+  workflow_dispatch:
+
+jobs:
+  contents:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r collectors/scripts/prompts/requirements.txt
+
+      - name: Write OCI config
+        run: |
+          mkdir -p ~/.oci
+          echo "${{ secrets.OCI_CONFIG }}" > ~/.oci/config
+          echo "${{ secrets.OCI_KEY }}"    > ~/.oci/key.pem
+          chmod 600 ~/.oci/config ~/.oci/key.pem
+
+      - name: Run contents scheduler
+        env:
+          PYTHONPATH:           ${{ github.workspace }}
+          GITHUB_TOKEN_1:       ${{ secrets.GH_TOKEN_1 }}
+          GITHUB_TOKEN_2:       ${{ secrets.GH_TOKEN_2 }}
+          OCI_NAMESPACE:        ${{ secrets.OCI_NAMESPACE }}
+          OCI_BUCKET:           ${{ secrets.OCI_BUCKET }}
+          DISCORD_WEBHOOK_URL:  ${{ secrets.DISCORD_WEBHOOK_URL }}
+          FAIL_ALERT_THRESHOLD: "50"
+        run: python -m collectors.scripts.prompts.main_contents
+
+      - name: Cleanup OCI credentials
+        if: always()
+        run: rm -f ~/.oci/config ~/.oci/key.pem
