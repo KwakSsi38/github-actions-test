@@ -14,7 +14,7 @@ OCI object name: ai-tracker/updates.json
 
 from collectors.scripts.shared.oci_client import BaseOciClient
 
-OBJECT_NAME: str = "ai-tracker/updates.json"
+OBJECT_NAME: str = "data/ai-tracker/updates.json"
 
 
 class AiTrackerOciManager(BaseOciClient):
