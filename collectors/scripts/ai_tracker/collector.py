@@ -432,49 +432,77 @@ def _parse_anthropic_news(
         html: str, source: dict[str, Any]
 ) -> list[dict[str, Any]]:
     """
-    Anthropic 뉴스 페이지 파서 (https://www.anthropic.com/news).
-
-    RSS를 제공하지 않아 스크래핑으로 대체합니다.
-    페이지는 서버사이드 렌더링으로 뉴스 목록이 HTML에 포함됩니다.
-    뉴스 목록은 <li> 태그 안에 날짜/카테고리/제목/링크로 구성됩니다.
+    Anthropic 뉴스룸 HTML 구조에 최적화된 파서.
+    상단 Featured 영역과 하단 News List 영역을 모두 지원합니다.
     """
     soup = BeautifulSoup(html, "html.parser")
     items: list[dict[str, Any]] = []
     base_url: str = "https://www.anthropic.com"
+    seen_urls: set[str] = set()
 
-    for li in soup.select("li")[:20]:
-        anchor = li.find("a", href=True)
+    # 1. 하단 뉴스 리스트 (Publication List) 처리
+    # 클래스명에 'PublicationList'와 'list'가 포함된 ul 내의 li들을 탐색
+    list_items = soup.select('ul[class*="PublicationList"] li')
+
+    # 2. 상단 피쳐드 그리드 (Featured Grid) 처리
+    # 클래스명에 'FeaturedGrid'가 포함된 영역 내의 링크들
+    featured_links = soup.select('div[class*="FeaturedGrid"] a[href*="/news/"]')
+
+    # 두 그룹 통합 처리
+    candidates = [('list', li) for li in list_items] + [('featured', a) for a in featured_links]
+
+    for type_, entry in candidates:
+        # a 태그 찾기
+        anchor = entry if entry.name == "a" else entry.find("a", href=True)
         if not anchor:
             continue
 
         href: str = anchor["href"]
-        url: str = href if href.startswith("http") else f"{base_url}{href}"
-
-        # 날짜: MMM DD, YYYY 형식 텍스트 탐색
-        date_text: str = ""
-        for el in li.find_all(string=True):
-            text = el.strip()
-            # "Feb 24, 2026" 패턴
-            if len(text) > 6 and any(
-                    text.startswith(m)
-                    for m in ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-            ):
-                date_text = text
-                break
-
-        # 제목: <h> 태그 우선, 없으면 anchor 텍스트
-        heading = li.find(["h2", "h3", "h4"])
-        title: str = (
-            heading.get_text(strip=True) if heading
-            else anchor.get_text(strip=True)
-        )
-        if not title:
+        # 메일 주소나 단순 경로 제외, 구체적인 뉴스 슬러그가 있는 것만 수집
+        if not (href.startswith("/news/") and len(href) > 6):
             continue
 
-        # summary: 제목 다음 <p> 태그
-        para = li.find("p")
-        summary: str = para.get_text(strip=True)[:500] if para else ""
+        url: str = href if href.startswith("http") else f"{base_url}{href}"
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+
+        # 타이틀 및 날짜 추출 (영역별 구조 차이 반영)
+        title: str = ""
+        date_text: str = ""
+        summary: str = ""
+
+        if type_ == 'list':
+            # 하단 리스트 구조: 별도의 span 클래스에 제목이 담겨 있음
+            title_tag = anchor.select_one('span[class*="title"]')
+            title = title_tag.get_text(strip=True) if title_tag else ""
+
+            time_tag = anchor.find("time")
+            date_text = time_tag.get_text(strip=True) if time_tag else ""
+        else:
+            # 상단 그리드 구조: h2 또는 h4 태그가 제목
+            title_tag = anchor.find(["h2", "h4"])
+            title = title_tag.get_text(strip=True) if title_tag else ""
+
+            time_tag = anchor.find("time")
+            date_text = time_tag.get_text(strip=True) if time_tag else ""
+
+            # 피쳐드 영역은 p 태그에 요약문이 있음
+            summary_tag = anchor.find("p")
+            summary = summary_tag.get_text(strip=True) if summary_tag else ""
+
+        # 제목이 비어있으면 앵커 텍스트에서 날짜/카테고리를 제거하고 추출 시도
+        if not title:
+            title = anchor.get_text(" ", strip=True)
+            if date_text:
+                title = title.replace(date_text, "").strip()
+            # 카테고리(Announcements, Policy 등)가 붙어있을 경우 제거
+            for cat in ["Announcements", "Policy", "Research", "Product", "Event"]:
+                if title.startswith(cat):
+                    title = title[len(cat):].strip()
+
+        if not title:
+            continue
 
         items.append(_make_item(
             source=source,
@@ -484,6 +512,9 @@ def _parse_anthropic_news(
             source_type="scrape",
             published_at=date_text or None,
         ))
+
+        if len(items) >= 30: # 넉넉하게 수집
+            break
 
     return items
 
