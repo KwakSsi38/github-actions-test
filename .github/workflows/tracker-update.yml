@@ -1,0 +1,88 @@
+name: tracker-update
+
+on:
+  # schedule:
+    # - cron: "0 3 * * *"   # 매일 오전 12시 KST (UTC 03:00)
+  workflow_dispatch:
+    inputs:
+      start_from:
+        description: "재실행 시작 단계"
+        required: false
+        default: "collect"
+        type: choice
+        options:
+          - collect
+          - webhook_trigger
+
+env:
+  PYTHON_VERSION: "3.11"
+  SCRIPTS_PATH:   "collectors/scripts/ai_tracker"
+
+jobs:
+  pipeline:
+    name: Run AI Tracker Pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+
+    steps:
+      # ── 환경 세팅 ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r ${{ env.SCRIPTS_PATH }}/requirements.txt
+
+      - name: Write OCI config
+        run: |
+          mkdir -p ~/.oci
+          echo "${{ secrets.OCI_CONFIG }}" > ~/.oci/config
+          echo "${{ secrets.OCI_KEY }}"    > ~/.oci/key.pem
+          chmod 600 ~/.oci/config ~/.oci/key.pem
+
+      # ── 파이프라인 실행 ──────────────────────────────────────────────────
+      - name: "1. Collect & Upload to OCI"
+        if: |
+          github.event_name == 'schedule' ||
+          contains(fromJSON('["collect"]'), github.event.inputs.start_from)
+        env:
+          GITHUB_TOKEN:        ${{ secrets.GITHUB_TOKEN }}
+          CF_ACCOUNT_ID:       ${{ secrets.CF_ACCOUNT_ID }}
+          CF_API_TOKEN:        ${{ secrets.CF_API_TOKEN }}
+          OCI_NAMESPACE:       ${{ secrets.OCI_NAMESPACE }}
+          OCI_BUCKET:          ${{ secrets.OCI_BUCKET }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python -m collectors.scripts.ai_tracker.pipeline
+
+      - name: "2. Trigger Spring Pipeline"
+        if: |
+          github.event_name == 'schedule' ||
+          contains(fromJSON('["collect","webhook_trigger"]'), github.event.inputs.start_from)
+        env:
+          SPRING_WEBHOOK_URL:    ${{ secrets.SPRING_WEBHOOK_URL }}
+          SPRING_WEBHOOK_SECRET: ${{ secrets.SPRING_WEBHOOK_SECRET }}
+        run: python -m collectors.scripts.shared.webhook_trigger
+
+      # ── 정리 ─────────────────────────────────────────────────────────────
+      - name: Cleanup OCI credentials
+        if: always()
+        run: rm -f ~/.oci/config ~/.oci/key.pem
+
+      # ── 실패 알림 ─────────────────────────────────────────────────────────
+      - name: Notify on failure (Discord)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python -c "
+          from collectors.scripts.ai_tracker.notify import notify_failure
+          run_url = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          notify_failure('pipeline', Exception(f'워크플로우 실패: {run_url}'))
+          "
