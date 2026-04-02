@@ -42,7 +42,7 @@ def parse_anthropic_news(html: str, source: dict[str, Any]) -> list[dict[str, An
             break
     return items
 
-
+# TODO: 현재 changelog 관련 가져오기가 잘 되지 않아 추후 수정 예정 TM-135
 def parse_openai_changelog(html: str, source: dict[str, Any]) -> list[dict[str, Any]]:
     """OpenAI Platform Changelog 파싱. CF BR 응답이 JSON 래퍼일 경우 내부 HTML 추출."""
     if html.strip().startswith("{"):
@@ -60,7 +60,6 @@ def parse_openai_changelog(html: str, source: dict[str, Any]) -> list[dict[str, 
                 make_item(source, para.get_text(strip=True), source["url"], div.get_text(strip=True), "scrape")
             )
     return items
-
 
 def parse_anthropic_changelog(html: str, source: dict[str, Any]) -> list[dict[str, Any]]:
     """

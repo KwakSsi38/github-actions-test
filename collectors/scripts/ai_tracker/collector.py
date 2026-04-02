@@ -78,7 +78,7 @@ def collect_all() -> list[dict[str, Any]]:
 
     all_items: list[dict[str, Any]] = []
 
-    # ── RSS 병렬 수집 ─────────────────────────────────────────────────────────
+    # ── RSS 병렬 수집 (rate-limit 없음) ─────────────────────────────────────
     log.info("RSS 소스 %d개 병렬 수집 시작...", len(rss_sources))
     with ThreadPoolExecutor(max_workers=len(rss_sources)) as executor:
         future_to_source = {

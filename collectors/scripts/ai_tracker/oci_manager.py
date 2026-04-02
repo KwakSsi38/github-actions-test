@@ -15,7 +15,7 @@ OCI object name: ai-tracker/updates.json
 from collectors.scripts.shared.oci_client import BaseOciClient
 
 OBJECT_NAME: str = "data/ai-tracker/updates.json"
-
+# TODO: oci_manger 중복 로직 삭제 및 config 이동 TM-135
 
 class AiTrackerOciManager(BaseOciClient):
     """ai_tracker 파이프라인 OCI 업로더."""
