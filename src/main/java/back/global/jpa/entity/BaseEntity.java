@@ -29,6 +29,5 @@ public abstract class BaseEntity {
     private LocalDateTime createdAt;
 
     @LastModifiedDate
-    @Setter(PROTECTED)
     private LocalDateTime updatedAt;
 }

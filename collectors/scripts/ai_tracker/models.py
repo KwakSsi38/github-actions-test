@@ -16,6 +16,7 @@ log: logging.Logger = logging.getLogger(__name__)
 
 def make_id(provider: str, title: str, url: str) -> str:
     """provider, title, url 기반 고유 ID 생성."""
+    # TODO: title, url이 바뀌면 다른 걸로 취급될 것 보완 필요 TM-135
     raw: str = f"{provider}::{title}::{url}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 

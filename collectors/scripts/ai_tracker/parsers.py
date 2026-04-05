@@ -51,6 +51,7 @@ def parse_openai_changelog(html: str, source: dict[str, Any]) -> list[dict[str, 
         except Exception as e:
             log.warning("[openai_changelog] JSON 언래핑 실패: %s", e)
 
+    # TODO: 구조가 바뀐 경우를 대비해 범용 백업 로직 필요 TM-135
     soup = BeautifulSoup(html, "html.parser")
     items: list[dict[str, Any]] = []
     for div in soup.find_all("div", class_=lambda c: c and "MarkdownContent" in c)[:MAX_ITEMS_PER_SOURCE]:

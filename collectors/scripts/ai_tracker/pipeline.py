@@ -10,7 +10,7 @@ GitHub Actions에서 이 모듈을 직접 실행합니다.
 import logging
 import sys
 
-from collectors.scripts.ai_tracker.collector import build_json, collect_all
+from collectors.scripts.ai_tracker.collector import build_json, collect_all, validate_env
 from collectors.scripts.ai_tracker.notify import notify_failure, notify_success
 from collectors.scripts.ai_tracker.oci_manager import AiTrackerOciManager
 from collectors.scripts.shared.utils import setup_logging
@@ -20,6 +20,8 @@ log: logging.Logger = logging.getLogger(__name__)
 
 
 def main() -> None:
+    validate_env()
+
     # 1. 수집
     log.info("=== AI Tracker 파이프라인 시작 ===")
     items = collect_all()

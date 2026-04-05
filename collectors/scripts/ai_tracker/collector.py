@@ -121,6 +121,7 @@ def collect_all() -> list[dict[str, Any]]:
             unique_items.append(item)
 
     unique_items = unique_items[:MAX_TOTAL_ITEMS]
+    # TODO: published_at으로 처리하는 로직 추가 (null인 경우가 있으니 이를 고려) Tm-135
     log.info("선별된 %d개 항목의 상세 본문 수집 시작...", len(unique_items))
 
     for item in unique_items:
@@ -129,6 +130,7 @@ def collect_all() -> list[dict[str, Any]]:
             item["raw_content"] = item["summary"]
         elif len(item["summary"]) > 1000:
             # 요약이 충분히 길면 상세 수집 생략
+            # TODO: 필드가 실질적으로 본문을 포함하는지 체크 필요 TM-135
             item["raw_content"] = item["summary"]
         else:
             time.sleep(DETAIL_FETCH_DELAY_SECONDS)

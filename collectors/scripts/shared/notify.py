@@ -42,8 +42,7 @@ def send_embed(payload: dict) -> None:
 
 def send_error(title: str, exc: Exception, sensitive_values: list[str] | None = None) -> None:
     """오류 알림 전송. 스택트레이스 포함, 민감 정보 마스킹."""
-    # TODO: 스택 트레이스가 포함이 되고 있는 게 맞는지? TM-135
-    tb = traceback.format_exc()
+    tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
     if sensitive_values:
         tb = mask_sensitive(tb, sensitive_values)
     tb_short = tb[-3000:] if len(tb) > 3000 else tb

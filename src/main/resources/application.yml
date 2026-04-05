@@ -29,14 +29,38 @@ spring:
       max-request-size: 5MB
 
 app:
+  embedding:
+    base-url: ${APP_EMBEDDING_BASE_URL:https://embedding-server-domain}
+  mcp:
+    recommendation:
+      candidate-source: ${APP_MCP_RECOMMENDATION_CANDIDATE_SOURCE:skill-search}
+      ranking:
+        weight:
+          primary: ${APP_MCP_RECOMMENDATION_WEIGHT_PRIMARY:0.60}
+          stars: ${APP_MCP_RECOMMENDATION_WEIGHT_STARS:0.20}
+          forks: ${APP_MCP_RECOMMENDATION_WEIGHT_FORKS:0.10}
+          freshness: ${APP_MCP_RECOMMENDATION_WEIGHT_FRESHNESS:0.10}
+        final-score-threshold: ${APP_MCP_RECOMMENDATION_FINAL_SCORE_THRESHOLD:0.45}
   storage:
-    type: ${APP_STORAGE_TYPE:local}
+    type: ${APP_STORAGE_TYPE:oci}
     local:
       upload-dir: ${APP_STORAGE_LOCAL_UPLOAD_DIR:./uploads}
     oci:
       bucket: ${OCI_OBJECT_STORAGE_BUCKET:}
       namespace: ${OCI_OBJECT_STORAGE_NAMESPACE:}
-      prefix: ${OCI_OBJECT_STORAGE_PREFIX:prod/}
+      prefix: ${OCI_OBJECT_STORAGE_PREFIX:data/}
+      auth-type: ${OCI_AUTH_TYPE:config-file}
+      config-file-path: ${OCI_CONFIG_FILE_PATH:~/.oci/config}
+      profile: ${OCI_CONFIG_PROFILE:DEFAULT}
+      region: ${OCI_REGION:}
+  prompts:
+    base-path: ${APP_PROMPTS_BASE_PATH:data/prompts}
+    oci-prefix: ${OCI_OBJECT_STORAGE_PROMPTS_PREFIX:data/prompts/}
+  ai-info:
+    oci-prefix: ${AI_INFO_OCI_PREFIX:data/ai-info/}
+  ai-tracker:
+    oci-prefix: ${AI_TRACKER_OCI_PREFIX:data/ai-tracker/}
+    webhook-secret: ${SPRING_WEBHOOK_SECRET}
 
 custom:
   jwt:
@@ -66,3 +90,47 @@ management:
     health:
       probes:
         enabled: true
+
+oci:
+  namespace: ${OCI_NAMESPACE}
+  bucket: ${OCI_BUCKET}
+  prefix: data/ai-info/
+  auth-type: ${OCI_AUTH_TYPE:config-file}
+  config-file-path: ${OCI_CONFIG_FILE_PATH:~/.oci/config}
+  profile: ${OCI_CONFIG_PROFILE:DEFAULT}
+  region: ${OCI_REGION:}
+
+gemini:
+  api-key: ${CRAWL_GEMINI_API_KEY}
+  model: gemini-3.1-flash-lite-preview              # 매칭용 gemini-2.5-flash limit으로 인해 변경
+  description-model: gemini-3.1-flash-lite-preview  # description 생성용
+
+ai-model:
+  webhook-secret: ${SPRING_WEBHOOK_SECRET}
+  target-vendors:
+    - openai
+    - anthropic
+    - google
+
+github:
+  owner-repo: ${GITHUB_OWNER_REPO}
+  workflows:
+    token: ${GITHUB_WORKFLOW_TOKEN}
+    ai-info-and-stats:
+      crons:
+        - ${CRON_AI_INFO_AND_STATS:0 0 15 * * *}      # 매일 KST 00:00 (UTC 15:00)
+    contents:
+      crons:
+        - ${CRON_CONTENTS_0:0 0 15 * * 1-5}            # 화~토 KST 00:00
+        - ${CRON_CONTENTS_1:0 0 21 * * 1-5}            # 화~토 KST 06:00
+        - ${CRON_CONTENTS_2:0 0 3 * * 2-6}             # 화~토 KST 12:00
+        - ${CRON_CONTENTS_3:0 0 9 * * 2-6}             # 화~토 KST 18:00
+    enrich:
+      crons:
+        - ${CRON_ENRICH_0:0 0 15 * * 0}                # 월 KST 00:00 (is_monday_midnight=true)
+        - ${CRON_ENRICH_1:0 0 21 * * 0}                # 월 KST 06:00
+        - ${CRON_ENRICH_2:0 0 3 * * 1}                 # 월 KST 12:00
+        - ${CRON_ENRICH_3:0 0 9 * * 1}                 # 월 KST 18:00
+    tracker-update:
+      crons:
+        - ${CRON_TRACKER_UPDATE:0 0 3 * * *}           # 매일 KST 12:00 (UTC 03:00)

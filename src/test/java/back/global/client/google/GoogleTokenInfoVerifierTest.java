@@ -56,7 +56,8 @@ class GoogleTokenInfoVerifierTest {
                 """;
 
         try (TokenInfoStubServer stubServer = TokenInfoStubServer.start(200, responseBody)) {
-            GoogleTokenInfoVerifier verifier = new GoogleTokenInfoVerifier("test-client-id", stubServer.baseUrl() + "/");
+            GoogleTokenInfoVerifier verifier =
+                    new GoogleTokenInfoVerifier("test-client-id", stubServer.baseUrl() + "/");
 
             GoogleIdTokenVerifier.GoogleUserInfo verifiedUser = verifier.verify("id-token-904");
 

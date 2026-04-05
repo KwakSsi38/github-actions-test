@@ -1,5 +1,3 @@
-import org.gradle.internal.impldep.org.apache.sshd.common.NamedResource.findByName
-
 plugins {
     java
     id("org.springframework.boot") version "4.0.3"
@@ -64,12 +62,19 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
+    // oci object-storage
+    implementation("com.oracle.oci.sdk:oci-java-sdk-objectstorage:3.54.0")
+    implementation("com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey3:3.54.0")
+
     // JDBC
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     // PostgreSQL
     runtimeOnly("org.postgresql:postgresql")
     // pgvector
     implementation("com.pgvector:pgvector:0.1.6")
+
+    // webflux
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
 
     // OCI Object Storage
     implementation("com.oracle.oci.sdk:oci-java-sdk-objectstorage:3.60.0")

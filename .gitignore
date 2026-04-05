@@ -36,6 +36,10 @@ out/
 ### VS Code ###
 .vscode/
 
+### Environment ###
+.env
+!.env.example
+
 ### Markdown ###
 **/*.md
 !/README.md
@@ -43,11 +47,10 @@ out/
 
 .env
 
-### JSON ###
-collectors/data
+## venv ##
+venv/
+ai-service/venv/
 
-### Python ###
-collectors/venv/
-collectors/.env
-collectors/__pycache__/
-collectors/**/*.pyc
+## Python cache ##
+__pycache__/
+*.py[cod]

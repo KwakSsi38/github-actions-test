@@ -1,0 +1,45 @@
+{
+  "repository": {
+    "github_id": 1001454404,
+    "name": "affine-cortex",
+    "source_repo": "AffineFoundation/affine-cortex",
+    "source_url": "https://github.com/AffineFoundation/affine-cortex",
+    "summary": "Anima Machina",
+    "track": null,
+    "star_count": 37,
+    "fork_count": 50,
+    "size": 4753,
+    "language_stats": {
+      "Python": 99.8,
+      "Dockerfile": 0.1,
+      "Shell": 0.1
+    },
+    "license": null,
+    "homepage": null,
+    "owner_avatar_url": "https://avatars.githubusercontent.com/u/216167873?v=4",
+    "owner_type": "ORGANIZATION",
+    "is_official": null,
+    "default_branch": "main",
+    "etag": "W/\"d28b6341cab7e1a4363c4a2c2f99936f8f975c70c03d2ecdb209029ee2473acf\"",
+    "source_updated_at": "2026-03-30T13:41:16Z",
+    "active": true,
+    "raw_metadata": {
+      "topics": [],
+      "visibility": "public",
+      "pushed_at": "2026-03-30T13:41:11Z",
+      "created_at": "2025-06-13T12:08:54Z",
+      "is_fork": false,
+      "is_archived": false
+    }
+  },
+  "skills": [
+    {
+      "skill_name": "skill",
+      "file_path": "skill/SKILL.md",
+      "content_md": null,
+      "content_hash": null,
+      "raw_metadata": null
+    }
+  ],
+  "agent": null
+}

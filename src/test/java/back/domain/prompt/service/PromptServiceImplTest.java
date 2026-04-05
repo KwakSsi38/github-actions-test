@@ -1,4 +1,18 @@
-package back.domain.prompt.service;
+package back.domain.prompt.prompt.service;
+
+import back.domain.prompt.prompt.dto.SkillDto;
+import back.domain.prompt.prompt.entity.Repository;
+import back.domain.prompt.prompt.enums.OwnerType;
+import back.global.storage.OciObjectStorageReader;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.test.util.ReflectionTestUtils;
+import tools.jackson.databind.ObjectMapper;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
@@ -7,84 +21,42 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.Set;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.mockito.ArgumentCaptor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
-import org.springframework.test.util.ReflectionTestUtils;
-
-import back.domain.prompt.dto.SkillData;
-import back.domain.prompt.entity.Repository;
-import back.domain.prompt.enums.OwnerType;
-
-@SpringBootTest
 class PromptServiceImplTest {
 
-    @TempDir
-    Path tempDir;
-
-    @Autowired
+    private SkillUpsertService normalizeService;
+    private OciObjectStorageReader objectStorageReader;
     private PromptServiceImpl promptServiceImpl;
-
-    @Autowired
-    private SkillNormalizeServiceImpl normalizeService;
 
     @BeforeEach
     void setUp() {
-        reset(normalizeService);
+        normalizeService = mock(SkillUpsertService.class);
+        objectStorageReader = mock(OciObjectStorageReader.class);
+        promptServiceImpl = new PromptServiceImpl(normalizeService, new ObjectMapper(), objectStorageReader);
+        ReflectionTestUtils.setField(promptServiceImpl, "promptsOciPrefix", "data/prompts/");
     }
 
     @Test
-    @DisplayName("run은 json 파일을 처리해 repository, skills, agent를 정규화한다")
-    void run_processesJsonFiles() throws IOException {
-        writeFile("prompt.json", validPromptJson());
+    void run_processesOciJsonFiles() {
         Repository repository = repository(1L, "owner/repo");
-        when(normalizeService.normalizeRepository(any())).thenReturn(repository);
-        setPromptsBasePath(tempDir);
+
+        when(objectStorageReader.listObjectNames("data/prompts/")).thenReturn(List.of("data/prompts/prompt.json"));
+        when(objectStorageReader.readText("data/prompts/prompt.json")).thenReturn(validPromptJson());
+        when(normalizeService.upsertRepository(any())).thenReturn(repository);
 
         promptServiceImpl.run();
 
-        verify(normalizeService).normalizeRepository(
-                argThat(item -> item.getRepository() != null
-                        && "owner/repo".equals(item.getRepository().getSourceRepo()))
-        );
-
-        ArgumentCaptor<SkillData> skillCaptor = ArgumentCaptor.forClass(SkillData.class);
-        verify(normalizeService, times(2)).normalizeSkill(same(repository), skillCaptor.capture());
-        assertThat(skillCaptor.getAllValues())
-                .extracting(SkillData::getName)
-                .containsExactly("alpha", "beta");
-
-        verify(normalizeService).normalizeAgent(
-                same(repository),
-                argThat(agent -> agent != null && "agent-hash".equals(agent.getContentHash()))
-        );
+        verifyNormalized(repository);
     }
 
     @Test
-    @DisplayName("run은 repository payload가 없는 파일을 건너뛴다")
-    void run_skipsFileWithoutRepository() throws IOException {
-        writeFile("prompt.json", missingRepositoryJson());
-        setPromptsBasePath(tempDir);
+    void run_skipsFileWithoutRepository() {
+        when(objectStorageReader.listObjectNames("data/prompts/")).thenReturn(List.of("data/prompts/prompt.json"));
+        when(objectStorageReader.readText("data/prompts/prompt.json")).thenReturn(missingRepositoryJson());
 
         promptServiceImpl.run();
 
@@ -92,37 +64,35 @@ class PromptServiceImplTest {
     }
 
     @Test
-    @DisplayName("run은 skill 하나의 정규화에 실패해도 나머지 skills와 agent 처리를 계속한다")
-    void run_continuesWhenSkillNormalizationFails() throws IOException {
-        writeFile("prompt.json", validPromptJson());
+    void run_continuesWhenSkillNormalizationFails() {
         Repository repository = repository(1L, "owner/repo");
-        when(normalizeService.normalizeRepository(any())).thenReturn(repository);
+        when(objectStorageReader.listObjectNames("data/prompts/")).thenReturn(List.of("data/prompts/prompt.json"));
+        when(objectStorageReader.readText("data/prompts/prompt.json")).thenReturn(validPromptJson());
+        when(normalizeService.upsertRepository(any())).thenReturn(repository);
         doThrow(new IllegalStateException("boom"))
                 .when(normalizeService)
-                .normalizeSkill(same(repository), argThat(skill -> "alpha".equals(skill.getName())));
-        setPromptsBasePath(tempDir);
+                .upsertSkill(same(repository), argThat(skill -> "alpha".equals(skill.getName())));
 
         assertThatNoException().isThrownBy(() -> promptServiceImpl.run());
 
-        verify(normalizeService).normalizeSkill(
+        verify(normalizeService).upsertSkill(
                 same(repository),
                 argThat(skill -> "alpha".equals(skill.getName()))
         );
-        verify(normalizeService).normalizeSkill(
+        verify(normalizeService).upsertSkill(
                 same(repository),
                 argThat(skill -> "beta".equals(skill.getName()))
         );
-        verify(normalizeService).normalizeAgent(
+        verify(normalizeService).upsertAgent(
                 same(repository),
                 argThat(agent -> "agent-hash".equals(agent.getContentHash()))
         );
     }
 
     @Test
-    @DisplayName("run은 잘못된 json 파일을 무시한다")
-    void run_ignoresInvalidJson() throws IOException {
-        writeFile("broken.json", "{ not-valid-json");
-        setPromptsBasePath(tempDir);
+    void run_ignoresInvalidJson() {
+        when(objectStorageReader.listObjectNames("data/prompts/")).thenReturn(List.of("data/prompts/prompt.json"));
+        when(objectStorageReader.readText("data/prompts/prompt.json")).thenReturn("{ not-valid-json");
 
         promptServiceImpl.run();
 
@@ -130,57 +100,54 @@ class PromptServiceImplTest {
     }
 
     @Test
-    @DisplayName("run은 프롬프트 디렉터리가 없으면 즉시 종료한다")
-    void run_returnsWhenPromptDirectoryMissing() {
-        setPromptsBasePath(tempDir.resolve("missing"));
+    void run_returnsWhenNoJsonFilesExist() {
+        when(objectStorageReader.listObjectNames("data/prompts/")).thenReturn(List.of("data/prompts/readme.md"));
 
         promptServiceImpl.run();
 
         verifyNoInteractions(normalizeService);
     }
 
-    @Test
-    @DisplayName("run은 프롬프트 디렉터리에 json 파일이 없으면 즉시 종료한다")
-    void run_returnsWhenNoJsonFilesExist() throws IOException {
-        writeFile("notes.txt", "plain text");
-        setPromptsBasePath(tempDir);
+    private void verifyNormalized(Repository repository) {
+        verify(normalizeService).upsertRepository(
+                argThat(item -> item.getRepository() != null
+                        && "owner/repo".equals(item.getRepository().getSourceRepo()))
+        );
 
-        promptServiceImpl.run();
+        ArgumentCaptor<SkillDto> skillCaptor = ArgumentCaptor.forClass(SkillDto.class);
+        verify(normalizeService, times(2)).upsertSkill(same(repository), skillCaptor.capture());
+        assertThat(skillCaptor.getAllValues())
+                .extracting(SkillDto::getName)
+                .containsExactly("alpha", "beta");
 
-        verifyNoInteractions(normalizeService);
-    }
-
-    private void setPromptsBasePath(Path path) {
-        ReflectionTestUtils.setField(promptServiceImpl, "promptsBasePath", path.toString());
-    }
-
-    private void writeFile(String fileName, String content) throws IOException {
-        Files.writeString(tempDir.resolve(fileName), content);
+        verify(normalizeService).upsertAgent(
+                same(repository),
+                argThat(agent -> agent != null && "agent-hash".equals(agent.getContentHash()))
+        );
     }
 
     private Repository repository(Long id, String sourceRepo) {
-        Repository repository = Repository.create(
-                100L,
-                "demo-repo",
-                sourceRepo,
-                "https://example.com/" + sourceRepo,
-                "demo summary",
-                Set.of("java"),
-                10,
-                3,
-                50,
-                Map.of("Java", 90),
-                "MIT",
-                "https://example.com",
-                "https://example.com/avatar.png",
-                OwnerType.USER,
-                true,
-                "main",
-                "etag-1",
-                LocalDateTime.parse("2026-03-26T00:00:00"),
-                true,
-                Map.of("category", "demo")
-        );
+        Repository repository = Repository.builder()
+                .githubId(100L)
+                .name("demo-repo")
+                .sourceRepo(sourceRepo)
+                .sourceUri("https://example.com/" + sourceRepo)
+                .summary("demo summary")
+                .starCount(10)
+                .forkCount(3)
+                .size(50)
+                .languageStats(Map.of("Java", 90))
+                .license("MIT")
+                .homepage("https://example.com")
+                .ownerAvatarUrl("https://example.com/avatar.png")
+                .ownerType(OwnerType.USER)
+                .isOfficial(true)
+                .defaultBranch("main")
+                .etag("etag-1")
+                .sourceUpdatedAt(LocalDateTime.parse("2026-03-26T00:00:00"))
+                .active(true)
+                .rawMetadata(Map.of("category", "demo"))
+                .build();
         ReflectionTestUtils.setField(repository, "id", id);
         return repository;
     }
@@ -215,13 +182,13 @@ class PromptServiceImplTest {
                   },
                   "skills": [
                     {
-                      "name": "alpha",
+                      "skill_name": "alpha",
                       "file_path": "skills/alpha.md",
                       "content_md": "alpha content",
                       "content_hash": "alpha-hash"
                     },
                     {
-                      "name": "beta",
+                      "skill_name": "beta",
                       "file_path": "skills/beta.md",
                       "content_md": "beta content",
                       "content_hash": "beta-hash"
@@ -243,7 +210,7 @@ class PromptServiceImplTest {
                   "repository": null,
                   "skills": [
                     {
-                      "name": "alpha",
+                      "skill_name": "alpha",
                       "file_path": "skills/alpha.md",
                       "content_md": "alpha content",
                       "content_hash": "alpha-hash"
@@ -257,15 +224,5 @@ class PromptServiceImplTest {
                   }
                 }
                 """;
-    }
-
-    @TestConfiguration
-    static class TestConfig {
-
-        @Bean
-        @Primary
-        SkillNormalizeServiceImpl mockSkillNormalizeService() {
-            return mock(SkillNormalizeServiceImpl.class);
-        }
     }
 }

@@ -1,0 +1,94 @@
+{
+  "candidates": [
+    {
+      "skill_id": 1,
+      "skill_name": "Spring Backend Code Review",
+      "repository_name": "doc-agent",
+      "repository_url": "https://github.com/example/doc-agent",
+      "content_md": "# Spring Backend Code Review\n\n- 코드 리뷰 체크리스트\n- API 계층 테스트 전략\n- 리뷰 코멘트 템플릿\n",
+      "category": "backend",
+      "summary": "Spring 기반 백엔드 코드 리뷰를 자동화하고 개선 포인트를 제안하는 skill",
+      "primary_score": 0.89,
+      "metadata": {
+        "stars": 128,
+        "forks": 30,
+        "updated_at": "2026-03-20T12:30:00Z"
+      }
+    },
+    {
+      "skill_id": 2,
+      "skill_name": "API Documentation Generator",
+      "repository_name": "awesome-api-tools",
+      "repository_url": "https://github.com/example/awesome-api-tools",
+      "content_md": "# API Documentation Generator\n\n- OpenAPI 스키마 자동 생성\n- 변경 diff 감지\n- docs 품질 점검\n",
+      "category": "backend",
+      "summary": "Swagger 기반 API 문서를 자동으로 생성하는 skill",
+      "primary_score": 0.83,
+      "metadata": {
+        "stars": 210,
+        "forks": 45,
+        "updated_at": "2026-02-10T09:10:00Z"
+      }
+    },
+    {
+      "skill_id": 3,
+      "skill_name": "OCI Infrastructure Bootstrap",
+      "repository_name": "oci-infra-kit",
+      "repository_url": "https://github.com/example/oci-infra-kit",
+      "content_md": "# OCI Infrastructure Bootstrap\n\n- VCN/서브넷 설계 가이드\n- Terraform 상태 관리\n- 운영 체크리스트\n",
+      "category": "infra",
+      "summary": "OCI 인프라 초기 구성을 자동화하는 skill",
+      "primary_score": 0.81,
+      "metadata": {
+        "stars": 95,
+        "forks": 20,
+        "updated_at": "2026-03-25T11:00:00Z"
+      }
+    },
+    {
+      "skill_id": 4,
+      "skill_name": "Docker CI/CD Pipeline",
+      "repository_name": "docker-cicd-recipes",
+      "repository_url": "https://github.com/example/docker-cicd-recipes",
+      "content_md": "# Docker CI/CD Pipeline\n\n- 멀티 스테이지 빌드\n- 보안 스캔 파이프라인\n- 배포 롤백 전략\n",
+      "category": "devops",
+      "summary": "Docker 기반 CI/CD 파이프라인 구성을 제공하는 skill",
+      "primary_score": 0.78,
+      "metadata": {
+        "stars": 76,
+        "forks": 15,
+        "updated_at": "2026-03-28T07:40:00Z"
+      }
+    },
+    {
+      "skill_id": 5,
+      "skill_name": "Secure Secret Management",
+      "repository_name": "secret-guard",
+      "repository_url": "https://github.com/example/secret-guard",
+      "content_md": "# Secure Secret Management\n\n- 비밀정보 분리\n- 최소 권한 접근 정책\n- 키 로테이션 가이드\n",
+      "category": "security",
+      "summary": "애플리케이션 비밀정보 관리를 위한 보안 가이드 skill",
+      "primary_score": 0.69,
+      "metadata": {
+        "stars": 40,
+        "forks": 8,
+        "updated_at": "2026-01-15T15:10:00Z"
+      }
+    },
+    {
+      "skill_id": 6,
+      "skill_name": "Legacy Monolith Notes",
+      "repository_name": "legacy-notes",
+      "repository_url": "https://github.com/example/legacy-notes",
+      "content_md": "# Legacy Monolith Notes\n\n- 레거시 운영 팁\n",
+      "category": "backend",
+      "summary": "레거시 모놀리식 서비스 운영 기록",
+      "primary_score": 0.20,
+      "metadata": {
+        "stars": 1,
+        "forks": 0,
+        "updated_at": "2024-01-10T00:00:00Z"
+      }
+    }
+  ]
+}

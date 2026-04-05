@@ -14,7 +14,7 @@ LOCK_TTL_SEC      = 6 * 60 * 60  # 6시간
 # ── 스케줄러 설정 ─────────────────────────────────────────────────────────────
 CHECKPOINT_N    = 30              # N개마다 index.json 중간 저장
 TIMEOUT_MARGIN  = 20              # Actions 종료 N분 전에 자동 중단
-MAX_RUNTIME_SEC = (340 - TIMEOUT_MARGIN) * 60
+MAX_RUNTIME_SEC = (360 - TIMEOUT_MARGIN) * 60
 WORK_DIR        = Path("./work")
 
 # ── Sourcegraph ───────────────────────────────────────────────────────────────

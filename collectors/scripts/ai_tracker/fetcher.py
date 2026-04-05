@@ -25,7 +25,7 @@ log: logging.Logger = logging.getLogger(__name__)
 
 def extract_text_from_soup(soup: BeautifulSoup) -> str:
     """불필요한 태그를 제거하고 본문 텍스트만 추출."""
-    for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
+    for tag in soup(["script", "style", "nav", "footer", "header", "aside", "ins", "svg"]):
         tag.decompose()
     content = (
         soup.find("article")
@@ -116,6 +116,7 @@ def fetch_detail_content(url: str, provider: str) -> str:
     OpenAI openai.com/index 경로는 403 방지를 위해 CF BR로 직접 수집.
     그 외: httpx 시도 → 403/401 시 CF BR 폴백.
     """
+    # TODO: 요약으로 대신하고 있지만 없는 경우 고려 필요 TM-135
     if provider == "OpenAI" and "openai.com/index" in url:
         return fetch_with_cf_br(url)
 

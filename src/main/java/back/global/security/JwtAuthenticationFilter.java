@@ -2,6 +2,7 @@ package back.global.security;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -24,6 +25,9 @@ import lombok.RequiredArgsConstructor;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String INVALID_TOKEN_MESSAGE = "유효하지 않은 토큰입니다.";
     private static final String REFRESH_TOKEN_ENDPOINT = "/api/v1/auth/token/refresh";
+    private static final Set<String> MCP_BEARER_AUTH_ENDPOINTS = Set.of(
+            "/api/v1/mcp/template/start-agent",
+            "/api/v1/mcp/recommendations");
     private static final RequestMatcher REFRESH_TOKEN_REQUEST_MATCHER = request -> {
         if (!HttpMethod.POST.matches(request.getMethod())) {
             return false;
@@ -32,6 +36,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String pathWithinApplication = resolvePathWithinApplication(request);
         return REFRESH_TOKEN_ENDPOINT.equals(pathWithinApplication);
     };
+    private static final RequestMatcher MCP_BEARER_AUTH_REQUEST_MATCHER = request -> {
+        if (!HttpMethod.POST.matches(request.getMethod())) {
+            return false;
+        }
+
+        String pathWithinApplication = resolvePathWithinApplication(request);
+        return MCP_BEARER_AUTH_ENDPOINTS.contains(pathWithinApplication);
+    };
 
     private final JwtTokenProvider jwtTokenProvider;
     private final BearerTokenResolver bearerTokenResolver;
@@ -39,7 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return REFRESH_TOKEN_REQUEST_MATCHER.matches(request);
+        return REFRESH_TOKEN_REQUEST_MATCHER.matches(request) || MCP_BEARER_AUTH_REQUEST_MATCHER.matches(request);
     }
 
     @Override
