@@ -98,24 +98,35 @@ def _run(oci: OciManager, start_time: float) -> None:
                 notify_fail_warning(stats["failed"], total)
                 continue
 
-            if not fetch_one(gid_str, index, WORK_DIR):
+            # 상태 문자열 반환 받기
+            fetch_status = fetch_one(gid_str, index, WORK_DIR)
+
+            if fetch_status == "failed":
                 stats["failed"] += 1
                 notify_fail_warning(stats["failed"], total)
                 continue
 
-            oci_etag = oci.upload_file(filename, WORK_DIR)
-
-            if oci_etag:
-                index["repos"][gid_str].update({
-                    "oci_etag":       oci_etag,
-                    "content_status": "done",
-                    "last_content":   now,
-                })
+            elif fetch_status == "skipped":
+                # OCI 업로드 건너뜀 (핵심 병목 해결)
+                index["repos"][gid_str]["content_status"] = "done"
+                index["repos"][gid_str]["last_content"] = now
                 q["content_pending"].remove(gid_str)
-                stats["updated"] += 1
-            else:
-                stats["failed"] += 1
-                notify_fail_warning(stats["failed"], total)
+                stats["skipped"] += 1
+                continue
+
+            elif fetch_status == "updated":
+                oci_etag = oci.upload_file(filename, WORK_DIR)
+                if oci_etag:
+                    index["repos"][gid_str].update({
+                        "oci_etag":       oci_etag,
+                        "content_status": "done",
+                        "last_content":   now,
+                    })
+                    q["content_pending"].remove(gid_str)
+                    stats["updated"] += 1
+                else:
+                    stats["failed"] += 1
+                    notify_fail_warning(stats["failed"], total)
 
         except Exception as e:
             logger.error("  ✗ %s: %s", gid_str, e)

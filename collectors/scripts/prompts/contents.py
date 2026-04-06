@@ -13,16 +13,14 @@ logger = logging.getLogger(__name__)
 
 # ... (상단 _decode, _get_raw, _get_content 함수는 기존과 동일하게 유지) ...
 
-def fetch_one(gid_str: str, index: dict, work_dir: Path) -> bool:
+def fetch_one(gid_str: str, index: dict, work_dir: Path) -> str:
     """
-    content_pending 큐의 레포 1개를 처리.
-    work_dir의 JSON을 읽어 skill 내용을 채운 뒤 원자적으로 덮어씀.
-    성공 시 True, 실패 시 False.
+    반환값: "updated", "skipped", "failed" 중 하나
     """
     meta = index["repos"].get(gid_str)
     if not meta:
         logger.warning("index에 없는 github_id: %s", gid_str)
-        return False
+        return "failed"
 
     source_repo = meta["source_repo"]
     filename    = meta["filename"]
@@ -30,7 +28,7 @@ def fetch_one(gid_str: str, index: dict, work_dir: Path) -> bool:
 
     if not local_path.exists():
         logger.warning("로컬 파일 없음: %s", filename)
-        return False
+        return "failed"
 
     data   = load_json(local_path)
     branch = data.get("repository", {}).get("default_branch", "main")
@@ -38,14 +36,12 @@ def fetch_one(gid_str: str, index: dict, work_dir: Path) -> bool:
 
     logger.info("  %s — %d개 skill 확인", source_repo, len(skills))
 
-    # [임시 방어 로직] GitHub Actions 환경의 타임아웃 및 리소스 한계를 고려하여,
-    # 단일 레포에서 수집해야 할 SKILL.md가 1000개를 초과하면 해당 레포 수집을 통째로 스킵합니다.
-    # TODO: 추후 파이프라인을 Docker 환경으로 이식하여 리소스 제약이 풀리면 이 제한을 해제할 예정.
+    # [임시 방어 로직] 1000개 초과 시 스킵
     if len(skills) > 1000:
         logger.warning("    → SKILL.md 개수 초과 (%d개 > 1000개). 수집 스킵.", len(skills))
-        # 스킵하더라도 실패(무한 재시도)로 빠지지 않도록 처리 완료로 마킹 (True 반환)
-        return True
+        return "skipped"
 
+    changed = False
     for skill in skills:
         file_path  = skill["file_path"]
         stored_sha = skill.get("content_hash")
@@ -72,7 +68,11 @@ def fetch_one(gid_str: str, index: dict, work_dir: Path) -> bool:
         if skill.get("raw_metadata") is None:
             skill["raw_metadata"] = {}
         skill["raw_metadata"]["has_encoding_error"] = has_err
+        changed = True
 
-    # 원자적 저장
+    # 변경된 내용이 없다면 OCI 재업로드를 막기 위해 skipped 반환
+    if not changed:
+        return "skipped"
+
     save_json(data, local_path)
-    return True
+    return "updated"
