@@ -3,7 +3,7 @@ prompts/main_contents.py — 화~토 contents 스케줄러
 
 실행 주기: 화~토 0시 / 6시 / 12시 / 18시 (6시간, 5시간 40분부터 종료 준비)
 
-흐름 (리팩토링됨):
+흐름:
   1. lock 획득
   2. index.json 로드
   3. content_pending 큐 확인 → 비어있으면 조기 종료
@@ -21,6 +21,7 @@ import shutil
 import sys
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 from collectors.scripts.prompts.config import CHECKPOINT_N, MAX_RUNTIME_SEC, WORK_DIR
 from collectors.scripts.prompts.contents import fetch_one
@@ -33,18 +34,6 @@ from collectors.scripts.prompts.oci_manager import OciManager
 from collectors.scripts.shared.utils import setup_logging
 
 logger = logging.getLogger(__name__)
-
-import sys
-from pathlib import Path
-
-# ── 1. 로컬 환경변수 로드 (.env) ──────────────────────────────────────────────
-# 주의: config.py 등에서 os.environ을 임포트 시점에 평가하므로,
-# 프로젝트 내부 모듈(collectors.scripts...) 임포트 전에 먼저 dotenv를 로드해야 합니다.
-try:
-    from dotenv import load_dotenv
-    env_path = Path(__file__).resolve().parent.parent.parent / ".env"
-except ImportError:
-    pass  # GitHub Actions 등 CI/CD 환경에서 패키지가 없는 경우 무시
 
 
 def main() -> None:
@@ -81,6 +70,16 @@ def _run(oci: OciManager, start_time: float) -> None:
     logger.info("=== contents 처리 시작 ===")
     stats   = {"updated": 0, "skipped": 0, "failed": 0}
     pending = list(q["content_pending"])
+
+    # -------------------------------------------------------------------------
+    # [임시 조치] GitHub Actions 워크플로우 한계 고려
+    # 처리해야 할 레포지토리(skill.md 대상)가 1000개를 초과할 경우 1000개까지만 진행합니다.
+    # TODO: 향후 도커(Docker) 기반 전용 워커로 파이프라인을 이식하게 된다면 이 제한을 풀 예정입니다.
+    # -------------------------------------------------------------------------
+    if len(pending) > 1000:
+        logger.warning("대기열이 %d개입니다. 임시로 최대 1000개까지만 처리합니다. (Docker 이식 후 해제 예정)", len(pending))
+        pending = pending[:1000]
+
     total   = len(pending)
     now     = datetime.now(timezone.utc).isoformat()
 
@@ -102,20 +101,18 @@ def _run(oci: OciManager, start_time: float) -> None:
         local_path = WORK_DIR / filename
 
         try:
-            # 1. 지연 로딩 (Lazy Download): 필요한 파일 1개만 다운로드
+            # 단건 지연 로딩
             if not oci.download_file(filename, WORK_DIR):
                 logger.warning("  ✗ OCI 다운로드 실패: %s", filename)
                 stats["failed"] += 1
                 notify_fail_warning(stats["failed"], total)
                 continue
 
-            # 2. 내용 수집 및 로컬 파일 업데이트
             if not fetch_one(gid_str, index, WORK_DIR):
                 stats["failed"] += 1
                 notify_fail_warning(stats["failed"], total)
                 continue
 
-            # 3. 원자적 업로드 처리
             oci_etag = oci.upload_file(filename, WORK_DIR)
 
             if oci_etag:
@@ -136,11 +133,10 @@ def _run(oci: OciManager, start_time: float) -> None:
             notify_fail_warning(stats["failed"], total)
 
         finally:
-            # 4. 디스크 누수 방지 (Cleanup): 처리 완료 또는 실패 시 파일 즉시 삭제
+            # 디스크 누수 방지용 Cleanup
             if local_path.exists():
                 local_path.unlink(missing_ok=True)
 
-        # 5. 체크포인트 저장
         if i % CHECKPOINT_N == 0:
             logger.info("  💾 체크포인트 (%d/%d)", i, total)
             oci.save_index(index, checkpoint=True)
