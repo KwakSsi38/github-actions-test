@@ -3,7 +3,7 @@ prompts/main_contents.py — 화~토 contents 스케줄러
 
 실행 주기: 화~토 0시 / 6시 / 12시 / 18시 (6시간, 5시간 40분부터 종료 준비)
 
-흐름:
+흐름 (리팩토링됨):
   1. lock 획득
   2. index.json 로드
   3. content_pending 큐 확인 → 비어있으면 조기 종료
@@ -70,16 +70,6 @@ def _run(oci: OciManager, start_time: float) -> None:
     logger.info("=== contents 처리 시작 ===")
     stats   = {"updated": 0, "skipped": 0, "failed": 0}
     pending = list(q["content_pending"])
-
-    # -------------------------------------------------------------------------
-    # [임시 조치] GitHub Actions 워크플로우 한계 고려
-    # 처리해야 할 레포지토리(skill.md 대상)가 1000개를 초과할 경우 1000개까지만 진행합니다.
-    # TODO: 향후 도커(Docker) 기반 전용 워커로 파이프라인을 이식하게 된다면 이 제한을 풀 예정입니다.
-    # -------------------------------------------------------------------------
-    if len(pending) > 1000:
-        logger.warning("대기열이 %d개입니다. 임시로 최대 1000개까지만 처리합니다. (Docker 이식 후 해제 예정)", len(pending))
-        pending = pending[:1000]
-
     total   = len(pending)
     now     = datetime.now(timezone.utc).isoformat()
 
